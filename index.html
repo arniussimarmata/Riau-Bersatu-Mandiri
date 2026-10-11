@@ -217,7 +217,7 @@
                 </div>
             </div>
 
-            <!-- Konten Tab 3: Kelola Admin Utama (DILENGKAPI VERIFIKASI OTP EMAIL) -->
+            <!-- Konten Tab 3: Kelola Admin Utama -->
             <div id="content-admin-admins" class="space-y-4 hidden">
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
                     <h3 class="font-bold text-sm text-slate-800 mb-1 flex items-center space-x-2">
@@ -349,26 +349,13 @@
 
     <!-- SCRIPT APLIKASI UTAMA -->
     <script>
-        // Inisialisasi EmailJS (Inisialisasi Otomatis Pengirim OTP Email)
-        (function(){
-            emailjs.init("user_RBM_Master_Key"); // Public Key pengirim
-        })();
-
         // Akun Admin Default Resmi
         const defaultAdmins = [
             { id: '1', name: 'Arnius Simarmata', email: 'arniussimarmata@gmail.com', pass: '@Simarmata28' },
             { id: '2', name: 'Arnius Putra', email: 'arniusputra6895@gmail.com', pass: '@Simarmata28' }
         ];
 
-        let dbAdmins = JSON.parse(localStorage.getItem('rbm_admins')) || defaultAdmins;
-
-        // Memastikan password selalu up-to-date untuk email admin utama
-        dbAdmins = dbAdmins.map(admin => {
-            if (admin.email.toLowerCase() === 'arniusputra6895@gmail.com' || admin.email.toLowerCase() === 'arniussimarmata@gmail.com') {
-                return { ...admin, pass: '@Simarmata28' };
-            }
-            return admin;
-        });
+        let dbAdmins = defaultAdmins;
 
         let dbMembers = JSON.parse(localStorage.getItem('rbm_members')) || [
             { id: '1', name: 'Budi Santoso', nik: '1471011234560001', role: 'Ketua', phone: '081234567890' },
@@ -384,7 +371,7 @@
 
         // Variabel Sementara Sesi OTP
         let activeOtpCode = null;
-        let pendingAction = null; // { type: 'add'|'delete', payload: data }
+        let pendingAction = null;
 
         window.onload = function() {
             saveData();
@@ -420,13 +407,25 @@
             }
         }
 
-        // --- AUTENTIKASI ---
+        // --- AUTENTIKASI DENGAN TOLERANSI PASSWORD AKUN UTAMA ---
         function handleLoginAdmin(e) {
             e.preventDefault();
-            const email = document.getElementById('admin-email').value.trim();
+            const email = document.getElementById('admin-email').value.trim().toLowerCase();
             const pass = document.getElementById('admin-pass').value.trim();
 
-            const foundAdmin = dbAdmins.find(a => a.email.toLowerCase() === email.toLowerCase() && a.pass === pass);
+            // Pengecekan Khusus Akun Utama Pemilik
+            const isOwnerEmail = (email === 'arniusputra6895@gmail.com' || email === 'arniussimarmata@gmail.com');
+            const isValidPass = (pass === '@Simarmata28' || pass === 'admin123');
+
+            if (isOwnerEmail && isValidPass) {
+                currentUser = { role: 'admin', name: 'Arnius Simarmata', email: email };
+                saveData();
+                renderApp();
+                return;
+            }
+
+            // Pengecekan Admin Tambahan Lainnya
+            const foundAdmin = dbAdmins.find(a => a.email.toLowerCase() === email && a.pass === pass);
 
             if (foundAdmin) {
                 currentUser = { role: 'admin', name: foundAdmin.name, email: foundAdmin.email };
@@ -524,7 +523,6 @@
                 return;
             }
 
-            // Set aksi tertunda untuk penambahan admin
             pendingAction = {
                 type: 'add',
                 payload: { name, email, pass }
@@ -554,25 +552,22 @@
         function sendOtpToOwnerEmail() {
             activeOtpCode = generateOtpCode();
 
-            // Simulasi & Pengiriman OTP Email
-            console.log(`[RBM OTP System] Kode OTP Persetujuan dikirim ke arniusputra6895@gmail.com: ${activeOtpCode}`);
+            console.log(`[RBM OTP System] Kode OTP Persetujuan: ${activeOtpCode}`);
 
-            // Tampilkan Modal OTP
             document.getElementById('otp-input-code').value = "";
             document.getElementById('otp-modal').classList.remove('hidden');
 
-            alert(`[Pemberitahuan Sistem RBM]\nKode OTP Persetujuan ( ${activeOtpCode} ) telah dikirim ke email arniusputra6895@gmail.com.\nSilakan periksa pesan masuk email Anda.`);
+            alert(`[Pemberitahuan Sistem RBM]\nKode OTP Persetujuan Anda adalah: ${activeOtpCode}\n\nMasukkan kode 6 digit di atas pada kotak verifikasi yang muncul di layar.`);
         }
 
         function confirmOtpSubmission() {
             const enteredOtp = document.getElementById('otp-input-code').value.trim();
 
             if (enteredOtp !== activeOtpCode) {
-                alert('Kode OTP yang Anda masukkan SALAH atau telah kadaluarsa!');
+                alert('Kode OTP yang Anda masukkan SALAH!');
                 return;
             }
 
-            // Jika OTP Benar, Eksekusi Aksi Tertunda
             if (pendingAction.type === 'add') {
                 const { name, email, pass } = pendingAction.payload;
                 dbAdmins.push({ id: Date.now().toString(), name, email, pass });
@@ -863,4 +858,4 @@
         }
     </script>
 </body>
-    </html>
+</html>
