@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Riau Bersatu Mandiri</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- QR Code Generator Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-[#0b1411] text-gray-100 min-h-screen font-sans">
+
+    <!-- Section Login -->
+    <div id="login-section" class="max-w-md mx-auto px-4 py-12">
+        <div class="bg-[#13221c] border border-[#1f382e] p-6 rounded-2xl shadow-xl">
+            <div class="flex items-center space-x-3 mb-6">
+                <div class="bg-emerald-600 p-2.5 rounded-xl text-xl"></div>
+                <div>
+                    <h2 class="text-lg font-bold text-white">Riau Bersatu Mandiri</h2>
+                    <p class="text-xs text-emerald-400">Sistem Informasi Organisasi</p>
+                </div>
+            </div>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-300 mb-1">Email / NIK Masuk</label>
+                    <input type="text" id="login-identifier" placeholder="Masukkan Email atau NIK" required class="w-full px-3.5 py-2.5 bg-[#0b1411] border border-[#234237] rounded-xl text-sm text-white focus:outline-none focus:border-emerald-500">
+                </div>
+                <button type="submit" id="btn-login" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl font-medium text-sm transition">
+                    Masuk
+                </button>
+            </form>
+            <p id="login-error" class="text-red-400 text-xs mt-3 text-center hidden"></p>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard-section" class="max-w-md mx-auto min-h-screen flex flex-col justify-between hidden bg-[#0b1411]">
+        <div>
+            <!-- Header -->
+            <header class="bg-[#0b5e38] px-5 py-5 rounded-b-2xl shadow-md">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="bg-emerald-800/60 p-2.5 rounded-2xl text-2xl border border-emerald-500/30"></div>
+                        <div>
+                            <h1 class="text-base font-bold text-white tracking-wide">Riau Bersatu Mandiri</h1>
+                            <p class="text-xs text-emerald-200">Sistem Informasi Organisasi</p>
+                        </div>
+                    </div>
+                    <button id="btn-logout" class="bg-red-600/80 hover:bg-red-600 text-white text-xs px-2.5 py-1.5 rounded-lg border border-red-500/40">Keluar</button>
+                </div>
+            </header>
+
+            <!-- Navigasi Tab Menu -->
+            <nav class="px-4 mt-4">
+                <div class="flex space-x-2 overflow-x-auto no-scrollbar pb-1">
+                    <button id="tab-beranda" onclick="switchTab('beranda')" class="tab-btn flex items-center space-x-2 bg-[#173326] text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap">
+                        <span></span><span>Beranda</span>
+                    </button>
+                    <button id="tab-anggota" onclick="switchTab('anggota')" class="tab-btn flex items-center space-x-2 bg-[#13221c] text-gray-400 hover:text-gray-200 px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap border border-[#1d352b]">
+                        <span></span><span>Data Anggota</span>
+                    </button>
+                    <button id="tab-keuangan" onclick="switchTab('keuangan')" class="tab-btn flex items-center space-x-2 bg-[#13221c] text-gray-400 hover:text-gray-200 px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap border border-[#1d352b]">
+                        <span></span><span>Keuangan</span>
+                    </button>
+                </div>
+            </nav>
+
+            <!-- Content Area -->
+            <main class="px-4 mt-5 space-y-5">
+
+                <!-- TAB 1: BERANDA -->
+                <div id="content-beranda" class="tab-content space-y-5">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center space-x-2">
+                            <span>Halo, <span id="dashboard-name">Pengurus</span></span><span></span>
+                        </h2>
+                        <p class="text-xs text-gray-400 mt-1">Ringkasan administrasi Riau Bersatu Mandiri.</p>
+                        <div class="mt-2 text-xs text-emerald-400 font-medium">
+                            Hak Akses: <span id="dashboard-role" class="uppercase tracking-wider"></span>
+                        </div>
+                    </div>
+
+                    <!-- Grid Kartu Statistik -->
+                    <div class="grid grid-cols-2 gap-3.5">
+                        <div class="bg-[#12231b] border border-[#1e392c] p-4 rounded-2xl">
+                            <p class="text-[11px] text-gray-400 font-medium">Total anggota</p>
+                            <p id="stat-total-anggota" class="text-2xl font-bold text-white mt-1">0</p>
+                            <p class="text-[10px] text-emerald-400 mt-2">Terdaftar aktif</p>
+                        </div>
+                        <div class="bg-[#12231b] border border-[#1e392c] p-4 rounded-2xl">
+                            <p class="text-[11px] text-gray-400 font-medium">Saldo kas saat ini</p>
+                            <p id="stat-saldo-kas" class="text-xl font-bold text-emerald-400 mt-1">Rp 0</p>
+                            <p class="text-[10px] text-emerald-400 mt-2">Real-time database</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: DATA ANGGOTA -->
+                <div id="content-anggota" class="tab-content hidden space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-base font-bold text-white">Daftar Anggota</h3>
+                        <button id="btn-tambah-anggota" onclick="openMemberModal()" class="bg-[#0b5e38] hover:bg-emerald-700 text-white text-xs px-3 py-2 rounded-xl font-semibold hidden">
+                            + Tambah Anggota
+                        </button>
+                    </div>
+                    <div id="members-list" class="space-y-3">
+                        <p class="text-xs text-gray-400 text-center py-4">Memuat data anggota...</p>
+                    </div>
+                </div>
+
+                <!-- TAB 3: KEUANGAN -->
+                <div id="content-keuangan" class="tab-content hidden space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-base font-bold text-white">Laporan Keuangan</h3>
+                        <button id="btn-tambah-keuangan" onclick="openKeuanganModal()" class="bg-[#0b5e38] hover:bg-emerald-700 text-white text-xs px-3 py-2 rounded-xl font-semibold hidden">
+                            + Catat Transaksi
+                        </button>
+                    </div>
+
+                    <!-- Ringkasan Keuangan -->
+                    <div class="bg-[#12231b] border border-[#1e392c] p-4 rounded-2xl space-y-3">
+                        <p class="text-xs text-gray-400 font-medium">Ringkasan Kas Organisasi</p>
+                        <div class="grid grid-cols-2 gap-3 pt-1">
+                            <div class="bg-[#0b1411] p-3 rounded-xl border border-emerald-500/20">
+                                <p class="text-[10px] text-gray-400">Total Pemasukan</p>
+                                <p id="kas-pemasukan" class="text-sm font-bold text-emerald-400 mt-0.5">Rp 0</p>
+                            </div>
+                            <div class="bg-[#0b1411] p-3 rounded-xl border border-red-500/20">
+                                <p class="text-[10px] text-gray-400">Total Pengeluaran</p>
+                                <p id="kas-pengeluaran" class="text-sm font-bold text-red-400 mt-0.5">Rp 0</p>
+                            </div>
+                        </div>
+                        <div class="bg-[#173326] p-3 rounded-xl border border-emerald-500/40 flex justify-between items-center">
+                            <span class="text-xs font-semibold text-white">Saldo Bersih Saat Ini:</span>
+                            <span id="kas-saldo-total" class="text-base font-extrabold text-emerald-300">Rp 0</span>
+                        </div>
+                    </div>
+
+                    <!-- Riwayat Transaksi -->
+                    <div class="space-y-2">
+                        <p class="text-xs font-semibold text-gray-300">Riwayat Transaksi</p>
+                        <div id="keuangan-list" class="space-y-2.5">
+                            <p class="text-xs text-gray-400 text-center py-4">Memuat transaksi...</p>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+
+        <footer class="text-center text-[10px] text-gray-500 py-6">
+            &copy; 2026 Riau Bersatu Mandiri. All rights reserved.
+        </footer>
+    </div>
+
+    <!-- Modal Form Tambah / Edit Anggota -->
+    <div id="member-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-[#13221c] border border-[#1f382e] w-full max-w-sm rounded-2xl p-5 space-y-4">
+            <h3 id="modal-title" class="text-sm font-bold text-white">Tambah Data Anggota</h3>
+            <form id="member-form" class="space-y-3">
+                <input type="hidden" id="member-doc-id">
+                <div>
+                    <label class="block text-[11px] text-gray-300 mb-1">Nama Lengkap</label>
+                    <input type="text" id="member-nama" required class="w-full px-3 py-2 bg-[#0b1411] border border-[#234237] rounded-xl text-xs text-white" placeholder="Contoh: Budi Santoso">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-gray-300 mb-1">NIK (Nomor Induk Kependudukan)</label>
+                    <input type="number" id="member-nik" required class="w-full px-3 py-2 bg-[#0b1411] border border-[#234237] rounded-xl text-xs text-white" placeholder="Contoh: 1401020304050001">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-gray-300 mb-1">Loper / Petugas Penanggung Jawab</label>
+                    <input type="text" id="member-loper" required class="w-full px-3 py-2 bg-[#0b1411] border border-[#234237] rounded-xl text-xs text-white" placeholder="Contoh: Loper 01">
+                </div>
+                <div class="flex space-x-2 pt-2">
+                    <button type="button" onclick="closeMemberModal()" class="w-1/2 bg-gray-700 text-white text-xs py-2 rounded-xl">Batal</button>
+                    <button type="submit" class="w-1/2 bg-emerald-600 text-white text-xs py-2 rounded-xl font-medium">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Form Keuangan -->
+    <div id="keuangan-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-[#13221c] border border-[#1f382e] w-full max-w-sm rounded-2xl p-5 space-y-4">
+            <h3 class="text-sm font-bold text-white">Catat Transaksi Keuangan</h3>
+            <form id="keuangan-form" class="space-y-3">
+                <div>
+                    <label class="block text-[11px] text-gray-300 mb-1">Jenis Transaksi</label>
+                    <select id="keuangan-jenis" required class="w-full px-3 py-2 bg-[#0b1411] border border-[#234237] rounded-xl text-xs text-white">
+                        <option value="masuk">Pemasukan (Uang Masuk)</option>
+                        <option value="keluar">Pengeluaran (Uang Keluar)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] text-gray-300 mb-1">Jumlah Nominal (Rp)</label>
+                    <input type="number" id="keuangan-nominal" required class="w-full px-3 py-2 bg-[#0b1411] border border-[#234237] rounded-xl text-xs text-white" placeholder="Contoh: 50000">
+                </div>
+                <div>
+                    <label class="block text-[11px] text-gray-300 mb-1">Keterangan Transaksi</label>
+                    <input type="text" id="keuangan-keterangan" required class="w-full px-3 py-2 bg-[#0b1411] border border-[#234237] rounded-xl text-xs text-white" placeholder="Contoh: Iuran Wajib Bulan Ini / Pembelian Alat">
+                </div>
+                <div class="flex space-x-2 pt-2">
+                    <button type="button" onclick="closeKeuanganModal()" class="w-1/2 bg-gray-700 text-white text-xs py-2 rounded-xl">Batal</button>
+                    <button type="submit" class="w-1/2 bg-emerald-600 text-white text-xs py-2 rounded-xl font-medium">Simpan Transaksi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal QR Code -->
+    <div id="qr-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-[#13221c] border border-[#1f382e] w-full max-w-xs rounded-2xl p-5 text-center space-y-4">
+            <h3 class="text-sm font-bold text-white">Kode QR Anggota</h3>
+            <p id="qr-member-name" class="text-xs text-emerald-400 font-semibold"></p>
+            <div id="qrcode-container" class="flex justify-center p-3 bg-white rounded-xl mx-auto w-fit"></div>
+            <button onclick="closeQrModal()" class="w-full bg-emerald-700 text-white text-xs py-2 rounded-xl">Tutup</button>
+        </div>
+    </div>
+
+    <!-- Firebase Modular SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, getDoc, setDoc, deleteDoc, collection, onSnapshot, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA8cW2XpfkkVp8pKJBzCfi6XrwcgRCu7Ps",
+            authDomain: "riau-mandiri-bersama.firebaseapp.com",
+            projectId: "riau-mandiri-bersama",
+            storageBucket: "riau-mandiri-bersama.firebasestorage.app",
+            messagingSenderId: "385083258788",
+            appId: "1:385083258788:web:6db34f6adf846d3da53331",
+            measurementId: "G-JQ45ZHZMMJ"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const ADMIN_EMAIL = "arniusputra6895@gmail.com";
+        let currentUserRole = 'member';
+
+        // Sesi Login Lokal
+        const activeUserId = localStorage.getItem('rbm_active_user');
+        if (activeUserId) {
+            initUserSession(activeUserId);
+        }
+
+        // Form Submit Login
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const identifier = document.getElementById('login-identifier').value.trim();
+            const errorElement = document.getElementById('login-error');
+            const btnLogin = document.getElementById('btn-login');
+
+            errorElement.classList.add('hidden');
+            btnLogin.textContent = "Memproses...";
+            btnLogin.disabled = true;
+
+            try {
+                localStorage.setItem('rbm_active_user', identifier);
+                await initUserSession(identifier);
+            } catch (error) {
+                errorElement.textContent = "Gagal masuk: " + error.message;
+                errorElement.classList.remove('hidden');
+            } finally {
+                btnLogin.textContent = "Masuk";
+                btnLogin.disabled = false;
+            }
+        });
+
+        // Logout Event
+        document.getElementById('btn-logout').addEventListener('click', () => {
+            localStorage.removeItem('rbm_active_user');
+            document.getElementById('login-section').classList.remove('hidden');
+            document.getElementById('dashboard-section').classList.add('hidden');
+        });
+
+        // Inisialisasi Sesi Pengguna
+        async function initUserSession(identifier) {
+            let userData = null;
+
+            try {
+                const userDocRef = doc(db, "users", identifier);
+                let userDocSnap = await getDoc(userDocRef);
+
+                if (userDocSnap.exists()) {
+                    userData = userDocSnap.data();
+                }
+
+                if (!userData && identifier.toLowerCase() === ADMIN_EMAIL) {
+                    userData = {
+                        nama: "Arnius Simarmata",
+                        email: ADMIN_EMAIL,
+                        role: "admin",
+                        nik: "1234567890",
+                        loper: "Admin Utama"
+                    };
+                    await setDoc(userDocRef, userData);
+                }
+
+                if (!userData) {
+                    alert("Akses ditolak. NIK atau Email belum terdaftar di sistem.");
+                    localStorage.removeItem('rbm_active_user');
+                    document.getElementById('login-section').classList.remove('hidden');
+                    document.getElementById('dashboard-section').classList.add('hidden');
+                    return;
+                }
+
+                const nama = userData.nama || userData.Nama || "Pengurus";
+                const role = (userData.role || userData.Peran || "member").toLowerCase();
+                currentUserRole = role;
+
+                document.getElementById('login-section').classList.add('hidden');
+                document.getElementById('dashboard-section').classList.remove('hidden');
+                document.getElementById('dashboard-name').textContent = nama;
+                document.getElementById('dashboard-role').textContent = currentUserRole;
+
+                if (currentUserRole === 'admin') {
+                    document.getElementById('btn-tambah-anggota').classList.remove('hidden');
+                    document.getElementById('btn-tambah-keuangan').classList.remove('hidden');
+                } else {
+                    document.getElementById('btn-tambah-anggota').classList.add('hidden');
+                    document.getElementById('btn-tambah-keuangan').classList.add('hidden');
+                }
+
+                loadMembersData();
+                loadKeuanganData();
+
+            } catch (err) {
+                console.error("Auth Session Error:", err);
+            }
+        }
+
+        // Realtime Data Anggota
+        function loadMembersData() {
+            onSnapshot(collection(db, "users"), (snapshot) => {
+                const membersList = document.getElementById('members-list');
+                membersList.innerHTML = '';
+                let totalCount = 0;
+
+                snapshot.forEach((docSnap) => {
+                    totalCount++;
+                    const data = docSnap.data();
+                    const docId = docSnap.id;
+
+                    const nama = data.nama || data.Nama || 'Tanpa Nama';
+                    const nik = data.nik || data.NIK || docId;
+                    const loper = data.loper || data.Loper || '-';
+                    const role = (data.role || data.Peran || 'member').toLowerCase();
+
+                    // Format isi teks di QR Code sesuai permintaan
+                    const qrText = `Riau Bersatu Mandiri\nNama: ${nama}\nLoper: ${loper}`;
+
+                    const card = document.createElement('div');
+                    card.className = "bg-[#12231b] border border-[#1e392c] p-3.5 rounded-2xl flex items-center justify-between";
+                    
+                    let adminActions = '';
+                    if (currentUserRole === 'admin') {
+                        adminActions = `
+                            <button onclick="editMember('${docId}', '${nama}', '${nik}', '${loper}')" class="text-xs text-blue-400 font-medium">Edit</button>
+                            <button onclick="deleteMember('${docId}')" class="text-xs text-red-400 font-medium">Hapus</button>
+                        `;
+                    }
+
+                    card.innerHTML = `
+                        <div class="space-y-1">
+                            <p class="text-xs font-bold text-white">${nama} <span class="text-[10px] font-normal text-emerald-400">(${role})</span></p>
+                            <p class="text-[11px] text-gray-300">NIK: ${nik}</p>
+                            <p class="text-[11px] text-gray-400">Loper: ${loper}</p>
+                        </div>
+                        <div class="flex flex-col items-end space-y-2">
+                            <button onclick="showQrCode('${nama}', \`${qrText}\`)" class="bg-emerald-800/50 border border-emerald-500/40 text-emerald-300 text-[10px] px-2.5 py-1 rounded-lg">
+                                 QR Code
+                            </button>
+                            <div class="flex space-x-2">
+                                ${adminActions}
+                            </div>
+                        </div>
+                    `;
+                    membersList.appendChild(card);
+                });
+
+                document.getElementById('stat-total-anggota').textContent = totalCount;
+            });
+        }
+
+        // Realtime Data Keuangan & Perhitungan Otomatis
+        function loadKeuanganData() {
+            onSnapshot(collection(db, "keuangan"), (snapshot) => {
+                const keuanganList = document.getElementById('keuangan-list');
+                keuanganList.innerHTML = '';
+                
+                let totalPemasukan = 0;
+                let totalPengeluaran = 0;
+
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    const id = docSnap.id;
+                    const nominal = Number(data.nominal || 0);
+
+                    if (data.jenis === 'masuk') {
+                        totalPemasukan += nominal;
+                    } else if (data.jenis === 'keluar') {
+                        totalPengeluaran += nominal;
+                    }
+
+                    const isMasuk = data.jenis === 'masuk';
+                    const card = document.createElement('div');
+                    card.className = "bg-[#12231b] border border-[#1e392c] p-3 rounded-xl flex justify-between items-center";
+
+                    let deleteBtn = '';
+                    if (currentUserRole === 'admin') {
+                        deleteBtn = `<button onclick="deleteKeuangan('${id}')" class="text-[11px] text-red-400 hover:underline ml-2">Hapus</button>`;
+                    }
+
+                    card.innerHTML = `
+                        <div class="space-y-0.5">
+                            <p class="text-xs font-semibold text-white">${data.keterangan || 'Transaksi'}</p>
+                            <p class="text-[10px] text-gray-400">${isMasuk ? 'Uang Masuk' : 'Uang Keluar'}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs font-bold ${isMasuk ? 'text-emerald-400' : 'text-red-400'}">
+                                ${isMasuk ? '+' : '-'} Rp ${nominal.toLocaleString('id-ID')}
+                            </p>
+                            ${deleteBtn}
+                        </div>
+                    `;
+                    keuanganList.appendChild(card);
+                });
+
+                const totalSaldo = totalPemasukan - totalPengeluaran;
+
+                document.getElementById('kas-pemasukan').textContent = `Rp ${totalPemasukan.toLocaleString('id-ID')}`;
+                document.getElementById('kas-pengeluaran').textContent = `Rp ${totalPengeluaran.toLocaleString('id-ID')}`;
+                document.getElementById('kas-saldo-total').textContent = `Rp ${totalSaldo.toLocaleString('id-ID')}`;
+                
+                document.getElementById('stat-saldo-kas').textContent = `Rp ${totalSaldo.toLocaleString('id-ID')}`;
+            });
+        }
+
+        // Form Submit Tambah Anggota
+        document.getElementById('member-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nama = document.getElementById('member-nama').value.trim();
+            const nik = document.getElementById('member-nik').value.trim();
+            const loper = document.getElementById('member-loper').value.trim();
+            const oldDocId = document.getElementById('member-doc-id').value;
+
+            try {
+                if (oldDocId && oldDocId !== nik) {
+                    await deleteDoc(doc(db, "users", oldDocId));
+                }
+
+                await setDoc(doc(db, "users", nik), {
+                    nama: nama,
+                    nik: nik,
+                    loper: loper,
+                    role: 'member'
+                }, { merge: true });
+
+                closeMemberModal();
+                alert("Data anggota berhasil disimpan!");
+            } catch (err) {
+                alert("Gagal menyimpan data: " + err.message);
+            }
+        });
+
+        // Form Submit Keuangan
+        document.getElementById('keuangan-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const jenis = document.getElementById('keuangan-jenis').value;
+            const nominal = Number(document.getElementById('keuangan-nominal').value);
+            const keterangan = document.getElementById('keuangan-keterangan').value.trim();
+
+            try {
+                await addDoc(collection(db, "keuangan"), {
+                    jenis: jenis,
+                    nominal: nominal,
+                    keterangan: keterangan,
+                    createdAt: serverTimestamp()
+                });
+
+                closeKeuanganModal();
+                alert("Transaksi berhasil dicatat!");
+            } catch (err) {
+                alert("Gagal mencatat transaksi: " + err.message);
+            }
+        });
+
+        // Global functions
+        window.switchTab = (tabName) => {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn flex items-center space-x-2 bg-[#13221c] text-gray-400 hover:text-gray-200 px-4 py-2 rounded-xl text-xs font-medium whitespace-nowrap border border-[#1d352b]";
+            });
+
+            document.getElementById(`content-${tabName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tabName}`);
+            activeBtn.className = "tab-btn flex items-center space-x-2 bg-[#173326] text-emerald-400 border border-emerald-500/30 px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap";
+        };
+
+        window.openMemberModal = () => {
+            document.getElementById('member-form').reset();
+            document.getElementById('member-doc-id').value = '';
+            document.getElementById('modal-title').textContent = "Tambah Data Anggota";
+            document.getElementById('member-modal').classList.remove('hidden');
+        };
+
+        window.closeMemberModal = () => document.getElementById('member-modal').classList.add('hidden');
+
+        window.openKeuanganModal = () => {
+            document.getElementById('keuangan-form').reset();
+            document.getElementById('keuangan-modal').classList.remove('hidden');
+        };
+
+        window.closeKeuanganModal = () => document.getElementById('keuangan-modal').classList.add('hidden');
+
+        window.editMember = (docId, nama, nik, loper) => {
+            document.getElementById('member-doc-id').value = docId;
+            document.getElementById('member-nama').value = nama;
+            document.getElementById('member-nik').value = nik;
+            document.getElementById('member-loper').value = loper;
+            document.getElementById('modal-title').textContent = "Edit Data Anggota";
+            document.getElementById('member-modal').classList.remove('hidden');
+        };
+
+        window.deleteMember = async (docId) => {
+            if (confirm(`Apakah Anda yakin ingin menghapus anggota dengan NIK (${docId})?`)) {
+                try {
+                    await deleteDoc(doc(db, "users", docId));
+                    alert("Data anggota berhasil dihapus!");
+                } catch (err) {
+                    alert("Gagal menghapus: " + err.message);
+                }
+            }
+        };
+
+        window.deleteKeuangan = async (id) => {
+            if (confirm("Apakah Anda yakin ingin menghapus catatan transaksi ini?")) {
+                try {
+                    await deleteDoc(doc(db, "keuangan", id));
+                    alert("Transaksi berhasil dihapus!");
+                } catch (err) {
+                    alert("Gagal menghapus: " + err.message);
+                }
+            }
+        };
+
+        window.showQrCode = (nama, qrTextPayload) => {
+            document.getElementById('qr-member-name').textContent = nama;
+            const container = document.getElementById('qrcode-container');
+            container.innerHTML = '';
+            new QRCode(container, {
+                text: qrTextPayload,
+                width: 128,
+                height: 128
+            });
+            document.getElementById('qr-modal').classList.remove('hidden');
+        };
+
+        window.closeQrModal = () => document.getElementById('qr-modal').classList.add('hidden');
+    </script>
+</body>
+</html>
