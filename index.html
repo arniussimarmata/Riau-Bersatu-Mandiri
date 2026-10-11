@@ -66,8 +66,6 @@
                     <input type="password" id="admin-pass" required placeholder="••••••••" class="w-full px-3 py-2 text-sm border rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none">
                 </div>
                 <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2.5 rounded-xl text-sm transition shadow-md shadow-emerald-600/20">Masuk sebagai Admin</button>
-                <!-- Tombol Pintas Akses Cepat Admin Utama -->
-                <button type="button" onclick="bypassAdmin()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold py-2 rounded-xl transition">Akses Cepat Admin Utama</button>
             </form>
 
             <!-- Form Login Member / Loper -->
@@ -83,12 +81,15 @@
         <!-- 2. DASBOR UTAMA ADMIN -->
         <section id="view-admin-dashboard" class="hidden space-y-6">
             <!-- Navigasi Menu Admin -->
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="switchAdminTab('members')" id="admin-tab-members" class="p-3 bg-emerald-600 text-white rounded-xl font-semibold text-xs flex items-center justify-center space-x-2 shadow-sm transition">
-                    <i class="fa-solid fa-users"></i><span>Kelola Anggota</span>
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="switchAdminTab('members')" id="admin-tab-members" class="p-3 bg-emerald-600 text-white rounded-xl font-semibold text-xs flex items-center justify-center space-x-1 shadow-sm transition">
+                    <i class="fa-solid fa-users"></i><span>Anggota</span>
                 </button>
-                <button onclick="switchAdminTab('finance')" id="admin-tab-finance" class="p-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold text-xs flex items-center justify-center space-x-2 shadow-sm transition">
-                    <i class="fa-solid fa-wallet"></i><span>Keuangan & Kas</span>
+                <button onclick="switchAdminTab('finance')" id="admin-tab-finance" class="p-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold text-xs flex items-center justify-center space-x-1 shadow-sm transition">
+                    <i class="fa-solid fa-wallet"></i><span>Keuangan</span>
+                </button>
+                <button onclick="switchAdminTab('admins')" id="admin-tab-admins" class="p-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold text-xs flex items-center justify-center space-x-1 shadow-sm transition">
+                    <i class="fa-solid fa-user-shield"></i><span>Kelola Admin</span>
                 </button>
             </div>
 
@@ -97,7 +98,7 @@
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
                     <h3 class="font-bold text-sm text-slate-800 mb-3 flex items-center justify-between">
                         <span>Pendaftaran Anggota Baru / Loper</span>
-                        <span class="text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">Scan KTP / Dokumen / Tulis Tangan</span>
+                        <span class="text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">Scan KTP / Dokumen</span>
                     </h3>
                     
                     <!-- Fitur Pindai Dokumen/KTP/Catatan -->
@@ -120,11 +121,16 @@
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-medium text-slate-600 mb-1">Peran / Jabatan</label>
-                                <select id="add-role" class="w-full px-3 py-2 text-xs border rounded-lg outline-none bg-white">
-                                    <option value="Loper">Loper</option>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Jabatan / Peran</label>
+                                <select id="add-role" onchange="handleRoleChange()" class="w-full px-3 py-2 text-xs border rounded-lg outline-none bg-white">
                                     <option value="Anggota">Anggota</option>
-                                    <option value="Pengurus">Pengurus</option>
+                                    <option value="Loper">Loper</option>
+                                    <option value="Ketua">Ketua</option>
+                                    <option value="Sekretaris">Sekretaris</option>
+                                    <option value="Bendahara">Bendahara</option>
+                                    <option value="Dewan Pendiri">Dewan Pendiri</option>
+                                    <option value="Dewan Pengawas">Dewan Pengawas</option>
+                                    <option value="Seksi">Seksi (Bidang Khusus)</option>
                                 </select>
                             </div>
                             <div>
@@ -132,6 +138,13 @@
                                 <input type="text" id="add-phone" placeholder="08xxxxxxxxxx" class="w-full px-3 py-2 text-xs border rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
                             </div>
                         </div>
+
+                        <!-- Kolom Bidang Seksi -->
+                        <div id="seksi-field-container" class="hidden">
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Nama Bidang Seksi (Contoh: Seksi Keamanan / Seksi Lapangan)</label>
+                            <input type="text" id="add-seksi-name" placeholder="Tuliskan nama bidang seksi secara manual" class="w-full px-3 py-2 text-xs border rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
+                        </div>
+
                         <p class="text-xs text-slate-400 italic">* Anda dapat memperbaiki data secara manual di atas jika hasil pindai foto kurang tepat.</p>
                         <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-lg text-xs transition shadow">Simpan Anggota Baru</button>
                     </form>
@@ -201,10 +214,46 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Konten Tab 3: Kelola Admin Utama Lainnya -->
+            <div id="content-admin-admins" class="space-y-4 hidden">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 class="font-bold text-sm text-slate-800 mb-3 flex items-center space-x-2">
+                        <i class="fa-solid fa-user-plus text-emerald-600"></i>
+                        <span>Tambah Admin Utama Baru</span>
+                    </h3>
+                    <form onsubmit="handleAddAdmin(event)" class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Nama Admin</label>
+                            <input type="text" id="add-admin-name" required placeholder="Contoh: Admin Pengurus 2" class="w-full px-3 py-2 text-xs border rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Email Login Admin</label>
+                                <input type="email" id="add-admin-email" required placeholder="admin2@rbm.com" class="w-full px-3 py-2 text-xs border rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Kata Sandi</label>
+                                <input type="password" id="add-admin-pass" required placeholder="••••••••" class="w-full px-3 py-2 text-xs border rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-lg text-xs transition shadow">Daftarkan Admin Baru</button>
+                    </form>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 class="font-bold text-sm text-slate-800 mb-3">Daftar Admin Utama Terdaftar</h3>
+                    <div id="admins-list-container" class="space-y-2">
+                        <!-- Data dimuat via JS -->
+                    </div>
+                </div>
+            </div>
         </section>
 
-        <!-- 3. HALAMAN DASBOR ANGGOTA / LOPER -->
+        <!-- 3. HALAMAN DASBOR ANGGOTA / LOPER (LENGKAP DENGAN AKSES KEUANGAN & DAFTAR NAMA ANGGOTA) -->
         <section id="view-member-dashboard" class="hidden space-y-6">
+            
+            <!-- Kartu Identitas & QR Code Anggota -->
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 text-center">
                 <div class="w-20 h-20 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center text-3xl mx-auto mb-3 shadow-inner">
                     <i class="fa-solid fa-id-card"></i>
@@ -219,6 +268,43 @@
                     <p class="text-[10px] text-slate-400">Tunjukkan QR Code ini kepada pengurus untuk verifikasi data.</p>
                 </div>
             </div>
+
+            <!-- Ringkasan Keuangan Transparan untuk Anggota -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <h3 class="font-bold text-sm text-slate-800 mb-3 flex items-center space-x-2">
+                    <i class="fa-solid fa-chart-pie text-emerald-600"></i>
+                    <span>Laporan Keuangan Kas Organisasi</span>
+                </h3>
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-100 text-center">
+                        <span class="text-[11px] text-emerald-600 block font-medium">Pemasukan</span>
+                        <span id="member-summary-income" class="text-xs sm:text-sm font-bold text-emerald-700">Rp 0</span>
+                    </div>
+                    <div class="bg-rose-50 p-3 rounded-xl border border-rose-100 text-center">
+                        <span class="text-[11px] text-rose-600 block font-medium">Pengeluaran</span>
+                        <span id="member-summary-expense" class="text-xs sm:text-sm font-bold text-rose-700">Rp 0</span>
+                    </div>
+                    <div class="bg-slate-900 text-white p-3 rounded-xl text-center">
+                        <span class="text-[11px] text-slate-300 block font-medium">Saldo Kas</span>
+                        <span id="member-summary-balance" class="text-xs sm:text-sm font-bold">Rp 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informasi Jumlah & Daftar Nama Anggota Terdaftar -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="font-bold text-sm text-slate-800 flex items-center space-x-2">
+                        <i class="fa-solid fa-users text-emerald-600"></i>
+                        <span>Daftar Anggota Organisasi</span>
+                    </h3>
+                    <span id="member-total-count" class="text-xs font-semibold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full">Total: 0 Anggota</span>
+                </div>
+                <div id="member-view-members-list" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                    <!-- Data Nama Anggota Dimuat disini -->
+                </div>
+            </div>
+
         </section>
 
     </main>
@@ -228,7 +314,7 @@
         &copy; 2026 Riau Bersatu Mandiri (RBM). All rights reserved.
     </footer>
 
-    <!-- MODAL PRatinjau Bukti Foto / Gambar -->
+    <!-- MODAL PRATINJAU BUKTI FOTO -->
     <div id="image-modal" class="fixed inset-0 bg-black/70 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl max-w-lg w-full p-4 relative">
             <button onclick="closeImageModal()" class="absolute top-3 right-3 text-slate-500 hover:text-slate-800 text-sm font-bold bg-slate-100 w-8 h-8 rounded-full flex items-center justify-center">✕</button>
@@ -239,10 +325,15 @@
 
     <!-- SCRIPT APLIKASI UTAMA -->
     <script>
-        // Simulasi Database Lokal (Persisten dengan localStorage agar tidak hilang saat refresh)
+        // Database Admin Utama
+        let dbAdmins = JSON.parse(localStorage.getItem('rbm_admins')) || [
+            { id: '1', name: 'Admin Utama', email: 'arniussimarmata@gmail.com', pass: 'admin123' },
+            { id: '2', name: 'Admin Utama 2', email: 'arniusputra6895@gmail.com', pass: 'admin123' }
+        ];
+
         let dbMembers = JSON.parse(localStorage.getItem('rbm_members')) || [
-            { id: '1', name: 'Budi Santoso', nik: '1471011234560001', role: 'Pengurus', phone: '081234567890' },
-            { id: '2', name: 'Siti Aminah', nik: '1471029876540002', role: 'Loper', phone: '089876543210' }
+            { id: '1', name: 'Budi Santoso', nik: '1471011234560001', role: 'Ketua', phone: '081234567890' },
+            { id: '2', name: 'Siti Aminah', nik: '1471029876540002', role: 'Seksi (Bidang Pendataan)', phone: '089876543210' }
         ];
 
         let dbFinance = JSON.parse(localStorage.getItem('rbm_finance')) || [
@@ -252,7 +343,6 @@
 
         let currentUser = JSON.parse(localStorage.getItem('rbm_current_user')) || null;
 
-        // Inisialisasi Aplikasi saat halaman dimuat
         window.onload = function() {
             if (currentUser) {
                 renderApp();
@@ -260,6 +350,7 @@
         };
 
         function saveData() {
+            localStorage.setItem('rbm_admins', JSON.stringify(dbAdmins));
             localStorage.setItem('rbm_members', JSON.stringify(dbMembers));
             localStorage.setItem('rbm_finance', JSON.stringify(dbFinance));
             localStorage.setItem('rbm_current_user', JSON.stringify(currentUser));
@@ -288,16 +379,18 @@
         // --- AUTENTIKASI ---
         function handleLoginAdmin(e) {
             e.preventDefault();
-            const email = document.getElementById('admin-email').value;
-            currentUser = { role: 'admin', name: 'Admin Utama (' + email + ')' };
-            saveData();
-            renderApp();
-        }
+            const email = document.getElementById('admin-email').value.trim();
+            const pass = document.getElementById('admin-pass').value.trim();
 
-        function bypassAdmin() {
-            currentUser = { role: 'admin', name: 'Admin Utama RBM' };
-            saveData();
-            renderApp();
+            const foundAdmin = dbAdmins.find(a => a.email.toLowerCase() === email.toLowerCase() && a.pass === pass);
+
+            if (foundAdmin) {
+                currentUser = { role: 'admin', name: foundAdmin.name, email: foundAdmin.email };
+                saveData();
+                renderApp();
+            } else {
+                alert('Email atau Kata Sandi Admin salah! Silakan periksa kembali.');
+            }
         }
 
         function handleLoginMember(e) {
@@ -322,7 +415,7 @@
             document.getElementById('user-info-section').classList.add('hidden');
         }
 
-        // --- RENDER TAMPILAN BERDASARKAN USER ---
+        // --- RENDER TAMPILAN ---
         function renderApp() {
             document.getElementById('view-login').classList.add('hidden');
             document.getElementById('user-info-section').classList.remove('hidden');
@@ -333,10 +426,13 @@
                 document.getElementById('view-member-dashboard').classList.add('hidden');
                 renderMembersList();
                 renderFinanceList();
+                renderAdminsList();
             } else {
                 document.getElementById('view-admin-dashboard').classList.add('hidden');
                 document.getElementById('view-member-dashboard').classList.remove('hidden');
                 renderMemberCard();
+                renderMemberFinanceView();
+                renderMemberListForMembers();
             }
         }
 
@@ -344,19 +440,84 @@
         function switchAdminTab(tab) {
             const mBtn = document.getElementById('admin-tab-members');
             const fBtn = document.getElementById('admin-tab-finance');
+            const aBtn = document.getElementById('admin-tab-admins');
+
             const mContent = document.getElementById('content-admin-members');
             const fContent = document.getElementById('content-admin-finance');
+            const aContent = document.getElementById('content-admin-admins');
+
+            mBtn.className = fBtn.className = aBtn.className = "p-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold text-xs flex items-center justify-center space-x-1 shadow-sm transition";
+            mContent.classList.add('hidden');
+            fContent.classList.add('hidden');
+            aContent.classList.add('hidden');
 
             if (tab === 'members') {
-                mBtn.className = "p-3 bg-emerald-600 text-white rounded-xl font-semibold text-xs flex items-center justify-center space-x-2 shadow-sm transition";
-                fBtn.className = "p-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold text-xs flex items-center justify-center space-x-2 shadow-sm transition";
+                mBtn.className = "p-3 bg-emerald-600 text-white rounded-xl font-semibold text-xs flex items-center justify-center space-x-1 shadow-sm transition";
                 mContent.classList.remove('hidden');
-                fContent.classList.add('hidden');
-            } else {
-                fBtn.className = "p-3 bg-emerald-600 text-white rounded-xl font-semibold text-xs flex items-center justify-center space-x-2 shadow-sm transition";
-                mBtn.className = "p-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-semibold text-xs flex items-center justify-center space-x-2 shadow-sm transition";
+            } else if (tab === 'finance') {
+                fBtn.className = "p-3 bg-emerald-600 text-white rounded-xl font-semibold text-xs flex items-center justify-center space-x-1 shadow-sm transition";
                 fContent.classList.remove('hidden');
-                mContent.classList.add('hidden');
+            } else if (tab === 'admins') {
+                aBtn.className = "p-3 bg-emerald-600 text-white rounded-xl font-semibold text-xs flex items-center justify-center space-x-1 shadow-sm transition";
+                aContent.classList.remove('hidden');
+            }
+        }
+
+        // --- KELOLA MULTI ADMIN UTAMA ---
+        function handleAddAdmin(e) {
+            e.preventDefault();
+            const name = document.getElementById('add-admin-name').value.trim();
+            const email = document.getElementById('add-admin-email').value.trim();
+            const pass = document.getElementById('add-admin-pass').value.trim();
+
+            const exist = dbAdmins.find(a => a.email.toLowerCase() === email.toLowerCase());
+            if (exist) {
+                alert('Email Admin sudah terdaftar!');
+                return;
+            }
+
+            dbAdmins.push({ id: Date.now().toString(), name, email, pass });
+            saveData();
+            renderAdminsList();
+            e.target.reset();
+            alert('Admin Utama baru berhasil ditambahkan!');
+        }
+
+        function deleteAdmin(id) {
+            if (dbAdmins.length <= 1) {
+                alert('Tidak bisa menghapus admin terakhir!');
+                return;
+            }
+            if (confirm('Yakin ingin menghapus Admin ini?')) {
+                dbAdmins = dbAdmins.filter(a => a.id !== id);
+                saveData();
+                renderAdminsList();
+            }
+        }
+
+        function renderAdminsList() {
+            const container = document.getElementById('admins-list-container');
+            container.innerHTML = dbAdmins.map(a => `
+                <div class="flex items-center justify-between p-3 bg-slate-50 border rounded-xl">
+                    <div>
+                        <h4 class="font-bold text-xs text-slate-800">${a.name}</h4>
+                        <p class="text-[11px] text-slate-500">Email: ${a.email}</p>
+                    </div>
+                    <button onclick="deleteAdmin('${a.id}')" class="text-rose-500 hover:text-rose-700 text-xs px-2 py-1"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `).join('');
+        }
+
+        // --- KONTROL TAMPILAN INPUT SEKSI ---
+        function handleRoleChange() {
+            const roleSelect = document.getElementById('add-role').value;
+            const seksiContainer = document.getElementById('seksi-field-container');
+            if (roleSelect === 'Seksi') {
+                seksiContainer.classList.remove('hidden');
+                document.getElementById('add-seksi-name').required = true;
+            } else {
+                seksiContainer.classList.add('hidden');
+                document.getElementById('add-seksi-name').required = false;
             }
         }
 
@@ -374,18 +535,14 @@
                 { logger: m => console.log(m) }
             ).then(({ data: { text } }) => {
                 statusEl.classList.add('hidden');
-                console.log("Hasil Scan OCR:", text);
 
-                // Algoritma sederhana mendeteksi NIK (16 digit angka) dari teks hasil scan
                 const nikMatch = text.match(/\b\d{16}\b/);
                 if (nikMatch) {
                     document.getElementById('add-nik').value = nikMatch[0];
                 }
 
-                // Mengambil baris pertama atau nama (estimasi teks pertama)
                 const lines = text.split('\n').filter(l => l.trim().length > 3);
                 if (lines.length > 0 && !nikMatch) {
-                    // Jika baris pertama bukan angka NIK, masukkan sebagai estimasi nama
                     document.getElementById('add-name').value = lines[0].trim();
                 } else if (lines.length > 1) {
                     document.getElementById('add-name').value = lines[1].trim();
@@ -395,23 +552,29 @@
             }).catch(err => {
                 statusEl.classList.add('hidden');
                 alert('Gagal memindai dokumen. Silakan ketik secara manual.');
-                console.error(err);
             });
         }
 
-        // --- KELOLA ANGGOTA ---
+        // --- KELOLA ANGGOTA (ADMIN VIEW) ---
         function handleAddMember(e) {
             e.preventDefault();
             const name = document.getElementById('add-name').value;
             const nik = document.getElementById('add-nik').value;
-            const role = document.getElementById('add-role').value;
+            const baseRole = document.getElementById('add-role').value;
             const phone = document.getElementById('add-phone').value;
 
-            dbMembers.push({ id: Date.now().toString(), name, nik, role, phone });
+            let finalRole = baseRole;
+            if (baseRole === 'Seksi') {
+                const seksiCustomName = document.getElementById('add-seksi-name').value.trim();
+                finalRole = seksiCustomName ? `Seksi (${seksiCustomName})` : 'Seksi Bidang';
+            }
+
+            dbMembers.push({ id: Date.now().toString(), name, nik, role: finalRole, phone });
             saveData();
             renderMembersList();
 
             e.target.reset();
+            document.getElementById('seksi-field-container').classList.add('hidden');
             alert('Anggota berhasil ditambahkan!');
         }
 
@@ -456,7 +619,7 @@
                         type,
                         amount,
                         desc,
-                        proof: uploadEvent.target.result // Simpan gambar dalam base64 di localStorage
+                        proof: uploadEvent.target.result
                     });
                     saveData();
                     renderFinanceList();
@@ -533,16 +696,15 @@
             document.getElementById('image-modal').classList.add('hidden');
         }
 
-        // --- KARTU & QR CODE ANGGOTA ---
+        // --- TAMPILAN KHUSUS ANGGOTA (MEMBER DASHBOARD VIEW) ---
         function renderMemberCard() {
             document.getElementById('member-card-name').innerText = currentUser.name;
             document.getElementById('member-card-role').innerText = currentUser.role;
             document.getElementById('member-card-nik').innerText = "NIK: " + currentUser.nik;
 
-            // Generate QR Code standar format RBM
             const qrContainer = document.getElementById('qrcode-container');
             qrContainer.innerHTML = "";
-            const qrText = `Riau Bersatu Mandiri\nNama: ${currentUser.name}\nNIK: ${currentUser.nik}\nPeran: ${currentUser.role}`;
+            const qrText = `Riau Bersatu Mandiri\nNama: ${currentUser.name}\nNIK: ${currentUser.nik}\nJabatan: ${currentUser.role}`;
             new QRCode(qrContainer, {
                 text: qrText,
                 width: 140,
@@ -552,6 +714,46 @@
                 correctLevel: QRCode.CorrectLevel.H
             });
         }
+
+        // Render Ringkasan Keuangan untuk Anggota
+        function renderMemberFinanceView() {
+            let totalIncome = 0;
+            let totalExpense = 0;
+
+            dbFinance.forEach(t => {
+                if (t.type === 'Masuk') totalIncome += t.amount;
+                else totalExpense += t.amount;
+            });
+
+            document.getElementById('member-summary-income').innerText = 'Rp ' + totalIncome.toLocaleString('id-ID');
+            document.getElementById('member-summary-expense').innerText = 'Rp ' + totalExpense.toLocaleString('id-ID');
+            document.getElementById('member-summary-balance').innerText = 'Rp ' + (totalIncome - totalExpense).toLocaleString('id-ID');
+        }
+
+        // Render Jumlah & Daftar Nama Anggota untuk Anggota (Privasi Terjaga)
+        function renderMemberListForMembers() {
+            const container = document.getElementById('member-view-members-list');
+            const totalCountEl = document.getElementById('member-total-count');
+
+            totalCountEl.innerText = `Total: ${dbMembers.length} Anggota`;
+
+            if (dbMembers.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Belum ada data anggota.</p>`;
+                return;
+            }
+
+            container.innerHTML = dbMembers.map((m, index) => `
+                <div class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+                    <div class="flex items-center space-x-2.5">
+                        <span class="w-6 h-6 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center text-[10px] font-bold">${index + 1}</span>
+                        <div>
+                            <h4 class="font-semibold text-xs text-slate-800">${m.name}</h4>
+                        </div>
+                    </div>
+                    <span class="text-[10px] font-medium bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg border border-emerald-100">${m.role}</span>
+                </div>
+            `).join('');
+        }
     </script>
 </body>
-                                    </html>
+</html>
