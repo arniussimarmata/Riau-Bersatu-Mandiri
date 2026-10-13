@@ -378,9 +378,8 @@
         </div>
     </div>
 
-    <!-- SCRIPT APLIKASI UTAMA (DENGAN RECOVERY LOCAL + CLOUD SINKRONISASI PUSAT) -->
+    <!-- SCRIPT APLIKASI UTAMA (DENGAN REALTIME REFRESH OTOMATIS) -->
     <script>
-        // INISIALISASI SUPABASE DATABASE
         const SUPABASE_URL = "https://fwragnhyftlyikpynpvl.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_FR47_uA2_HAesqrPGvzmoA_n0KL358W";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -390,38 +389,23 @@
             { id: '2', name: 'Arnius Putra', email: 'arniusputra6895@gmail.com', pass: '@Simarmata28' }
         ];
 
-        let dbAdmins = JSON.parse(localStorage.getItem('rbm_admins')) || defaultAdmins;
-        let dbMembers = JSON.parse(localStorage.getItem('rbm_members')) || [
+        let dbAdmins = defaultAdmins;
+        let dbMembers = [
             { id: '1', noAnggota: 'RBM-001', name: 'Arnius Simarmata', nik: '1404142801980001', role: 'Ketua', phone: '082383301041', loper: 'Pekanbaru' }
         ];
-        let dbFinance = JSON.parse(localStorage.getItem('rbm_finance')) || [];
+        let dbFinance = [];
         let currentUser = JSON.parse(localStorage.getItem('rbm_current_user')) || null;
 
         let activeOtpCode = null;
         let pendingAction = null;
 
         window.onload = async function() {
-            renderLocalDataUI();
             await syncCloudData();
             if (currentUser) {
                 renderApp();
             }
             subscribeRealtimeCloud();
         };
-
-        function renderLocalDataUI() {
-            if (currentUser) {
-                if (currentUser.role === 'admin') {
-                    renderMembersList();
-                    renderFinanceList();
-                    renderAdminsList();
-                } else if (currentUser.role === 'member') {
-                    renderMemberCard();
-                    renderMemberFinanceView();
-                    renderMemberListForMembers();
-                }
-            }
-        }
 
         function updateSyncBadge(statusText, isConnected) {
             const badge = document.getElementById('sync-badge');
@@ -433,7 +417,7 @@
             }
         }
 
-        // AMBIL & SINKRONKAN DATA CLOUD TERBARU
+        // AMBIL DATA DARI CLOUD
         async function syncCloudData() {
             try {
                 const { data, error } = await supabaseClient.from('rbm_data').select('*');
@@ -444,50 +428,44 @@
                         if (row.id === 'finance' && row.data) dbFinance = row.data;
                     });
                     
-                    // Simpan ke memori HP sebagai cadangan cepat
-                    localStorage.setItem('rbm_admins', JSON.stringify(dbAdmins));
-                    localStorage.setItem('rbm_members', JSON.stringify(dbMembers));
-                    localStorage.setItem('rbm_finance', JSON.stringify(dbFinance));
-
-                    renderLocalDataUI();
+                    if (currentUser) {
+                        renderApp();
+                    } else {
+                        renderMemberListForMembers();
+                    }
                     updateSyncBadge("● Online Cloud", true);
                 } else {
-                    // Jika cloud masih kosong, kirimkan data lokal pertama kali ke cloud
                     await pushAllToCloud();
                     updateSyncBadge("● Online Cloud", true);
                 }
             } catch (err) {
-                console.error("Cloud offline, menggunakan data HP:", err);
-                updateSyncBadge("● Mode Lokal (Offline)", false);
+                console.error("Gagal ambil data cloud:", err);
+                updateSyncBadge("● Offline", false);
             }
         }
 
-        // KIRIMKAN PEMBARUAN DATA KE CLOUD SUPABASE
+        // KIRIM DATA KE CLOUD
         async function pushAllToCloud() {
             try {
-                localStorage.setItem('rbm_admins', JSON.stringify(dbAdmins));
-                localStorage.setItem('rbm_members', JSON.stringify(dbMembers));
-                localStorage.setItem('rbm_finance', JSON.stringify(dbFinance));
                 localStorage.setItem('rbm_current_user', JSON.stringify(currentUser));
-
                 await supabaseClient.from('rbm_data').upsert({ id: 'admins', data: dbAdmins });
                 await supabaseClient.from('rbm_data').upsert({ id: 'members', data: dbMembers });
                 await supabaseClient.from('rbm_data').upsert({ id: 'finance', data: dbFinance });
             } catch (err) {
-                console.error("Gagal simpan ke Cloud:", err);
+                console.error("Gagal simpan ke cloud:", err);
             }
         }
 
-        // SINKRONISASI REALTIME DETIK ITU JUGA
+        // REALTIME LISTENER (OTOMATIS REFRESH DI HP LAIN)
         function subscribeRealtimeCloud() {
             supabaseClient.channel('public:rbm_data')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'rbm_data' }, async payload => {
                     await syncCloudData();
+                    console.log("Data diperbarui secara realtime dari perangkat lain.");
                 })
                 .subscribe();
         }
 
-        // --- MANAJEMEN TAB LOGIN ---
         function switchLoginTab(type) {
             const adminBtn = document.getElementById('tab-btn-admin');
             const memberBtn = document.getElementById('tab-btn-member');
@@ -507,7 +485,6 @@
             }
         }
 
-        // --- AUTENTIKASI ---
         function handleLoginAdmin(e) {
             e.preventDefault();
             const email = document.getElementById('admin-email').value.trim().toLowerCase();
@@ -524,13 +501,12 @@
             }
 
             const foundAdmin = dbAdmins.find(a => a.email.toLowerCase() === email && a.pass === pass);
-
             if (foundAdmin) {
                 currentUser = { role: 'admin', name: foundAdmin.name, email: foundAdmin.email };
                 pushAllToCloud();
                 renderApp();
             } else {
-                alert('Email atau Kata Sandi Admin salah! Silakan periksa kembali.');
+                alert('Email atau Kata Sandi Admin salah!');
             }
         }
 
@@ -543,7 +519,7 @@
                 pushAllToCloud();
                 renderApp();
             } else {
-                alert('NIK tidak ditemukan dalam data anggota. Silakan hubungi Admin.');
+                alert('NIK tidak ditemukan dalam data anggota.');
             }
         }
 
@@ -556,7 +532,6 @@
             document.getElementById('user-info-section').classList.add('hidden');
         }
 
-        // --- RENDER TAMPILAN ---
         function renderApp() {
             document.getElementById('view-login').classList.add('hidden');
             document.getElementById('user-info-section').classList.remove('hidden');
@@ -577,7 +552,6 @@
             }
         }
 
-        // --- NAVIGASI ADMIN ---
         function switchAdminTab(tab) {
             const mBtn = document.getElementById('admin-tab-members');
             const fBtn = document.getElementById('admin-tab-finance');
@@ -604,7 +578,6 @@
             }
         }
 
-        // --- SYSTEM OTP PERSETUJUAN EMAIL ---
         function generateOtpCode() {
             return Math.floor(100000 + Math.random() * 900000).toString();
         }
@@ -617,15 +590,11 @@
 
             const exist = dbAdmins.find(a => a.email.toLowerCase() === email.toLowerCase());
             if (exist) {
-                alert('Email Admin ini sudah terdaftar sebelumnya!');
+                alert('Email Admin sudah terdaftar!');
                 return;
             }
 
-            pendingAction = {
-                type: 'add',
-                payload: { name, email, pass }
-            };
-
+            pendingAction = { type: 'add', payload: { name, email, pass } };
             sendOtpToOwnerEmail();
         }
 
@@ -634,34 +603,26 @@
                 alert('Tidak bisa menghapus Admin terakhir!');
                 return;
             }
-
             const targetAdmin = dbAdmins.find(a => a.id === id);
             if (!targetAdmin) return;
 
-            if (confirm(`Penghapusan Admin (${targetAdmin.name}) memerlukan OTP Persetujuan. Kirim OTP ke arniusputra6895@gmail.com?`)) {
-                pendingAction = {
-                    type: 'delete',
-                    payload: { id, name: targetAdmin.name }
-                };
+            if (confirm(`Hapus Admin (${targetAdmin.name})? Kirim OTP ke arniusputra6895@gmail.com`)) {
+                pendingAction = { type: 'delete', payload: { id, name: targetAdmin.name } };
                 sendOtpToOwnerEmail();
             }
         }
 
         function sendOtpToOwnerEmail() {
             activeOtpCode = generateOtpCode();
-            console.log(`[RBM OTP System] Kode OTP Persetujuan: ${activeOtpCode}`);
-
             document.getElementById('otp-input-code').value = "";
             document.getElementById('otp-modal').classList.remove('hidden');
-
-            alert(`[Pemberitahuan Sistem RBM]\nKode OTP Persetujuan Anda adalah: ${activeOtpCode}\n\nMasukkan kode 6 digit di atas pada kotak verifikasi yang muncul di layar.`);
+            alert(`Kode OTP Persetujuan Anda adalah: ${activeOtpCode}`);
         }
 
         async function confirmOtpSubmission() {
             const enteredOtp = document.getElementById('otp-input-code').value.trim();
-
             if (enteredOtp !== activeOtpCode) {
-                alert('Kode OTP yang Anda masukkan SALAH!');
+                alert('Kode OTP salah!');
                 return;
             }
 
@@ -673,15 +634,14 @@
                 document.getElementById('add-admin-name').value = "";
                 document.getElementById('add-admin-email').value = "";
                 document.getElementById('add-admin-pass').value = "";
-                alert('Persetujuan OTP Berhasil! Admin Utama baru sukses ditambahkan.');
+                alert('Admin baru berhasil ditambahkan.');
             } else if (pendingAction.type === 'delete') {
                 const { id, name } = pendingAction.payload;
                 dbAdmins = dbAdmins.filter(a => a.id !== id);
                 await pushAllToCloud();
                 renderAdminsList();
-                alert(`Persetujuan OTP Berhasil! Admin (${name}) telah dihapus dari sistem.`);
+                alert(`Admin (${name}) berhasil dihapus.`);
             }
-
             closeOtpModal();
         }
 
@@ -699,15 +659,11 @@
                         <h4 class="font-bold text-xs text-slate-800">${a.name}</h4>
                         <p class="text-[11px] text-slate-500">Email: ${a.email}</p>
                     </div>
-                    <button onclick="requestDeleteAdmin('${a.id}')" class="text-rose-500 hover:text-rose-700 text-xs px-2 py-1 flex items-center space-x-1">
-                        <i class="fa-solid fa-trash"></i>
-                        <span>Hapus (OTP)</span>
-                    </button>
+                    <button onclick="requestDeleteAdmin('${a.id}')" class="text-rose-500 text-xs px-2 py-1"><i class="fa-solid fa-trash"></i> Hapus</button>
                 </div>
             `).join('');
         }
 
-        // --- KONTROL TAMPILAN INPUT SEKSI ---
         function handleRoleChange() {
             const roleSelect = document.getElementById('add-role').value;
             const seksiContainer = document.getElementById('seksi-field-container');
@@ -720,41 +676,29 @@
             }
         }
 
-        // --- FITUR OCR (PINDAI DOKUMEN / KTP) ---
         function processDocumentScan(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             const statusEl = document.getElementById('scan-status');
             statusEl.classList.remove('hidden');
 
-            Tesseract.recognize(
-                file,
-                'ind',
-                { logger: m => console.log(m) }
-            ).then(({ data: { text } }) => {
+            Tesseract.recognize(file, 'ind').then(({ data: { text } }) => {
                 statusEl.classList.add('hidden');
-
                 const nikMatch = text.match(/\b\d{16}\b/);
-                if (nikMatch) {
-                    document.getElementById('add-nik').value = nikMatch[0];
-                }
-
+                if (nikMatch) document.getElementById('add-nik').value = nikMatch[0];
                 const lines = text.split('\n').filter(l => l.trim().length > 3);
                 if (lines.length > 0 && !nikMatch) {
                     document.getElementById('add-name').value = lines[0].trim();
                 } else if (lines.length > 1) {
                     document.getElementById('add-name').value = lines[1].trim();
                 }
-
-                alert('Pemindaian dokumen selesai! Silakan periksa dan perbaiki manual data Nama atau NIK jika diperlukan.');
-            }).catch(err => {
+                alert('Pemindaian selesai.');
+            }).catch(() => {
                 statusEl.classList.add('hidden');
-                alert('Gagal memindai dokumen. Silakan ketik secara manual.');
+                alert('Gagal memindai dokumen.');
             });
         }
 
-        // --- KELOLA ANGGOTA (PENDAFTARAN & PERBAIKAN / EDIT DATA) ---
         async function handleAddMember(e) {
             e.preventDefault();
             const editId = document.getElementById('edit-member-id').value;
@@ -771,32 +715,15 @@
             }
 
             if (editId) {
-                // Proses Update / Perbaiki Data
                 const index = dbMembers.findIndex(m => m.id === editId);
                 if (index !== -1) {
-                    dbMembers[index] = {
-                        ...dbMembers[index],
-                        name,
-                        nik,
-                        role: finalRole,
-                        phone,
-                        loper
-                    };
-                    alert('Data Anggota berhasil diperbarui di seluruh HP!');
+                    dbMembers[index] = { ...dbMembers[index], name, nik, role: finalRole, phone, loper };
+                    alert('Data Anggota diperbarui.');
                 }
             } else {
-                // Proses Tambah Anggota Baru
                 const nextNo = 'RBM-' + String(dbMembers.length + 1).padStart(3, '0');
-                dbMembers.push({
-                    id: Date.now().toString(),
-                    noAnggota: nextNo,
-                    name,
-                    nik,
-                    role: finalRole,
-                    phone,
-                    loper
-                });
-                alert(`Anggota berhasil ditambahkan!\nNo. Anggota: ${nextNo}`);
+                dbMembers.push({ id: Date.now().toString(), noAnggota: nextNo, name, nik, role: finalRole, phone, loper });
+                alert(`Anggota ditambahkan: ${nextNo}`);
             }
 
             await pushAllToCloud();
@@ -807,7 +734,6 @@
         function editMember(id) {
             const member = dbMembers.find(m => m.id === id);
             if (!member) return;
-
             document.getElementById('edit-member-id').value = member.id;
             document.getElementById('add-name').value = member.name;
             document.getElementById('add-nik').value = member.nik;
@@ -817,18 +743,16 @@
             if (member.role.startsWith('Seksi')) {
                 document.getElementById('add-role').value = 'Seksi';
                 document.getElementById('seksi-field-container').classList.remove('hidden');
-                const customName = member.role.replace('Seksi (', '').replace(')', '');
-                document.getElementById('add-seksi-name').value = customName !== 'Seksi Bidang' ? customName : '';
+                document.getElementById('add-seksi-name').value = member.role.replace('Seksi (', '').replace(')', '');
             } else {
                 document.getElementById('add-role').value = member.role;
                 document.getElementById('seksi-field-container').classList.add('hidden');
             }
 
-            document.getElementById('form-member-title').innerText = "Perbaiki Data Anggota (" + member.noAnggota + ")";
-            document.getElementById('btn-save-member').innerText = "Simpan Perubahan Data";
+            document.getElementById('form-member-title').innerText = "Perbaiki Data Anggota";
+            document.getElementById('btn-save-member').innerText = "Simpan Perubahan";
             document.getElementById('btn-cancel-edit-member').classList.remove('hidden');
             document.getElementById('scan-container').classList.add('hidden');
-
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
@@ -843,7 +767,7 @@
         }
 
         async function deleteMember(id) {
-            if (confirm('Yakin ingin menghapus anggota ini?')) {
+            if (confirm('Hapus anggota ini?')) {
                 dbMembers = dbMembers.filter(m => m.id !== id);
                 await pushAllToCloud();
                 renderMembersList();
@@ -860,20 +784,18 @@
                 <div class="flex items-center justify-between p-3 bg-slate-50 border rounded-xl">
                     <div>
                         <h4 class="font-bold text-xs text-slate-800">${m.name} 
-                            <span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded ml-1 font-semibold">${m.noAnggota || 'RBM-000'}</span>
-                            <span class="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded ml-1">${m.role}</span>
+                            <span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded ml-1">${m.noAnggota || 'RBM-000'}</span>
                         </h4>
-                        <p class="text-[11px] text-slate-500">NIK: ${m.nik} | Telp: ${m.phone || '-'} | Loper: <span class="font-semibold text-slate-700">${m.loper || '-'}</span></p>
+                        <p class="text-[11px] text-slate-500">NIK: ${m.nik} | Loper: ${m.loper || '-'}</p>
                     </div>
                     <div class="flex items-center space-x-1">
-                        <button onclick="editMember('${m.id}')" class="text-amber-600 hover:text-amber-800 text-xs px-2 py-1"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                        <button onclick="deleteMember('${m.id}')" class="text-rose-500 hover:text-rose-700 text-xs px-2 py-1"><i class="fa-solid fa-trash"></i></button>
+                        <button onclick="editMember('${m.id}')" class="text-amber-600 text-xs px-2 py-1">Edit</button>
+                        <button onclick="deleteMember('${m.id}')" class="text-rose-500 text-xs px-2 py-1"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </div>
             `).join('');
         }
 
-        // --- KELOLA KEUANGAN & BUKTI FOTO ---
         async function handleTransaction(e) {
             e.preventDefault();
             const type = document.getElementById('trx-type').value;
@@ -884,36 +806,24 @@
             if (fileInput.files && fileInput.files[0]) {
                 const reader = new FileReader();
                 reader.onload = async function(uploadEvent) {
-                    dbFinance.push({
-                        id: Date.now().toString(),
-                        type,
-                        amount,
-                        desc,
-                        proof: uploadEvent.target.result
-                    });
+                    dbFinance.push({ id: Date.now().toString(), type, amount, desc, proof: uploadEvent.target.result });
                     await pushAllToCloud();
                     renderFinanceList();
                     e.target.reset();
-                    alert('Transaksi dan bukti foto berhasil dicatat!');
+                    alert('Transaksi dicatat.');
                 };
                 reader.readAsDataURL(fileInput.files[0]);
             } else {
-                dbFinance.push({
-                    id: Date.now().toString(),
-                    type,
-                    amount,
-                    desc,
-                    proof: ''
-                });
+                dbFinance.push({ id: Date.now().toString(), type, amount, desc, proof: '' });
                 await pushAllToCloud();
                 renderFinanceList();
                 e.target.reset();
-                alert('Transaksi berhasil dicatat (tanpa bukti foto).');
+                alert('Transaksi dicatat.');
             }
         }
 
         async function deleteTransaction(id) {
-            if (confirm('Hapus catatan transaksi ini?')) {
+            if (confirm('Hapus transaksi?')) {
                 dbFinance = dbFinance.filter(t => t.id !== id);
                 await pushAllToCloud();
                 renderFinanceList();
@@ -922,51 +832,29 @@
 
         function renderFinanceList() {
             const container = document.getElementById('finance-list-container');
-            let totalIncome = 0;
-            let totalExpense = 0;
-
+            let totalIncome = 0; let totalExpense = 0;
             if (dbFinance.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Belum ada riwayat transaksi.</p>`;
+                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Belum ada transaksi.</p>`;
             } else {
                 container.innerHTML = dbFinance.map(t => {
-                    if (t.type === 'Masuk') totalIncome += t.amount;
-                    else totalExpense += t.amount;
-
-                    const badgeColor = t.type === 'Masuk' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800';
-                    const amountSign = t.type === 'Masuk' ? '+ Rp ' : '- Rp ';
-
+                    if (t.type === 'Masuk') totalIncome += t.amount; else totalExpense += t.amount;
                     return `
                         <div class="flex items-center justify-between p-3 bg-slate-50 border rounded-xl">
                             <div>
-                                <div class="flex items-center space-x-2">
-                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeColor}">${t.type}</span>
-                                    <span class="font-bold text-xs text-slate-800">${t.desc}</span>
-                                </div>
-                                <p class="text-[11px] font-semibold text-slate-700 mt-0.5">${amountSign}${t.amount.toLocaleString('id-ID')}</p>
-                                ${t.proof ? `<button onclick="openImageModal('${t.proof}')" class="text-[10px] text-emerald-600 underline mt-1 block font-medium"><i class="fa-solid fa-image mr-1"></i> Lihat Bukti Foto</button>` : ''}
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${t.type === 'Masuk' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">${t.type}</span>
+                                <span class="font-bold text-xs text-slate-800 ml-1">${t.desc}</span>
+                                <p class="text-[11px] font-semibold text-slate-700 mt-0.5">Rp ${t.amount.toLocaleString('id-ID')}</p>
                             </div>
-                            <button onclick="deleteTransaction('${t.id}')" class="text-rose-500 hover:text-rose-700 text-xs px-2 py-1"><i class="fa-solid fa-trash"></i></button>
+                            <button onclick="deleteTransaction('${t.id}')" class="text-rose-500 text-xs px-2 py-1"><i class="fa-solid fa-trash"></i></button>
                         </div>
                     `;
                 }).join('');
             }
-
             document.getElementById('summary-income').innerText = 'Rp ' + totalIncome.toLocaleString('id-ID');
             document.getElementById('summary-expense').innerText = 'Rp ' + totalExpense.toLocaleString('id-ID');
             document.getElementById('summary-balance').innerText = 'Rp ' + (totalIncome - totalExpense).toLocaleString('id-ID');
         }
 
-        // --- PRATINJAU FOTO MODAL ---
-        function openImageModal(src) {
-            document.getElementById('modal-img-preview').src = src;
-            document.getElementById('image-modal').classList.remove('hidden');
-        }
-
-        function closeImageModal() {
-            document.getElementById('image-modal').classList.add('hidden');
-        }
-
-        // --- TAMPILAN KHUSUS ANGGOTA (QR TANPA NIK) ---
         function renderMemberCard() {
             document.getElementById('member-card-name').innerText = currentUser.name;
             document.getElementById('member-card-role').innerText = currentUser.role;
@@ -975,153 +863,38 @@
 
             const qrContainer = document.getElementById('qrcode-container');
             qrContainer.innerHTML = "";
-
-            const qrText = `Riau Bersatu Mandiri\nNama: ${currentUser.name}\nNo. Anggota: ${currentUser.noAnggota || 'RBM-001'}\nJabatan: ${currentUser.role}\nLoper: ${currentUser.loper || '-'}`;
-
             new QRCode(qrContainer, {
-                text: qrText,
-                width: 140,
-                height: 140,
-                colorDark: "#065f46",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
+                text: `Riau Bersatu Mandiri\nNama: ${currentUser.name}\nNo: ${currentUser.noAnggota || 'RBM-001'}`,
+                width: 140, height: 140
             });
         }
 
-        // Render Ringkasan Keuangan untuk Anggota
         function renderMemberFinanceView() {
-            let totalIncome = 0;
-            let totalExpense = 0;
-
+            let totalIncome = 0; let totalExpense = 0;
             dbFinance.forEach(t => {
-                if (t.type === 'Masuk') totalIncome += t.amount;
-                else totalExpense += t.amount;
+                if (t.type === 'Masuk') totalIncome += t.amount; else totalExpense += t.amount;
             });
-
             document.getElementById('member-summary-income').innerText = 'Rp ' + totalIncome.toLocaleString('id-ID');
             document.getElementById('member-summary-expense').innerText = 'Rp ' + totalExpense.toLocaleString('id-ID');
             document.getElementById('member-summary-balance').innerText = 'Rp ' + (totalIncome - totalExpense).toLocaleString('id-ID');
         }
 
-        // Render Daftar Nama Anggota untuk Anggota
         function renderMemberListForMembers() {
             const container = document.getElementById('member-view-members-list');
-            const totalCountEl = document.getElementById('member-total-count');
-
-            totalCountEl.innerText = `Total: ${dbMembers.length} Anggota`;
-
-            if (dbMembers.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Belum ada data anggota.</p>`;
-                return;
-            }
-
-            container.innerHTML = dbMembers.map((m, index) => `
-                <div class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl">
-                    <div class="flex items-center space-x-2.5">
-                        <span class="w-6 h-6 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center text-[10px] font-bold">${index + 1}</span>
-                        <div>
-                            <h4 class="font-semibold text-xs text-slate-800">${m.name} <span class="text-[10px] text-emerald-700 font-bold ml-1">(${m.noAnggota || 'RBM-000'})</span></h4>
-                        </div>
+            document.getElementById('member-total-count').innerText = `Total: ${dbMembers.length} Anggota`;
+            container.innerHTML = dbMembers.map((m, i) => `
+                <div class="flex items-center justify-between p-2.5 bg-slate-50 border rounded-xl">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-6 h-6 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center text-[10px] font-bold">${i + 1}</span>
+                        <h4 class="font-semibold text-xs text-slate-800">${m.name} (${m.noAnggota || 'RBM-000'})</h4>
                     </div>
-                    <span class="text-[10px] font-medium bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg border border-emerald-100">${m.role}</span>
+                    <span class="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg">${m.role}</span>
                 </div>
             `).join('');
         }
 
-        // --- FITUR UNDUH DOKUMEN LAPORAN ---
-        function exportMemberReport() {
-            const printArea = document.getElementById('print-area');
-            printArea.classList.remove('hidden');
-
-            let rows = dbMembers.map((m, i) => `
-                <tr style="border-bottom: 1px solid #ddd; text-align: left;">
-                    <td style="padding: 8px;">${i + 1}</td>
-                    <td style="padding: 8px;"><b>${m.noAnggota || 'RBM-000'}</b></td>
-                    <td style="padding: 8px;">${m.name}</td>
-                    <td style="padding: 8px;">'${m.nik}</td>
-                    <td style="padding: 8px;">${m.role}</td>
-                    <td style="padding: 8px;">${m.phone || '-'}</td>
-                    <td style="padding: 8px;">${m.loper || '-'}</td>
-                </tr>
-            `).join('');
-
-            printArea.innerHTML = `
-                <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
-                    <h2 style="font-size: 20px; font-weight: bold; margin: 0;">RIAU BERSATU MANDIRI (RBM)</h2>
-                    <p style="font-size: 12px; margin: 5px 0 0 0;">LAPORAN DATA ANGGOTA & PENGURUS TERDAFTAR</p>
-                </div>
-                <p style="font-size: 11px; margin-bottom: 10px;">Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}</p>
-                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-                    <thead>
-                        <tr style="background-color: #f2f2f2; border-bottom: 2px solid #000; text-align: left;">
-                            <th style="padding: 8px;">No</th>
-                            <th style="padding: 8px;">No. Anggota</th>
-                            <th style="padding: 8px;">Nama Lengkap</th>
-                            <th style="padding: 8px;">NIK</th>
-                            <th style="padding: 8px;">Jabatan</th>
-                            <th style="padding: 8px;">No. Telepon</th>
-                            <th style="padding: 8px;">Loper (Tempat)</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rows}</tbody>
-                </table>
-            `;
-
-            window.print();
-            printArea.classList.add('hidden');
-        }
-
-        function exportFinanceReport() {
-            const printArea = document.getElementById('print-area');
-            printArea.classList.remove('hidden');
-
-            let totalIncome = 0;
-            let totalExpense = 0;
-
-            let rows = dbFinance.map((t, i) => {
-                if (t.type === 'Masuk') totalIncome += t.amount;
-                else totalExpense += t.amount;
-
-                return `
-                    <tr style="border-bottom: 1px solid #ddd; text-align: left;">
-                        <td style="padding: 8px;">${i + 1}</td>
-                        <td style="padding: 8px;"><b>${t.type}</b></td>
-                        <td style="padding: 8px;">${t.desc}</td>
-                        <td style="padding: 8px; color: green;">${t.type === 'Masuk' ? 'Rp ' + t.amount.toLocaleString('id-ID') : '-'}</td>
-                        <td style="padding: 8px; color: red;">${t.type === 'Keluar' ? 'Rp ' + t.amount.toLocaleString('id-ID') : '-'}</td>
-                    </tr>
-                `;
-            }).join('');
-
-            printArea.innerHTML = `
-                <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
-                    <h2 style="font-size: 20px; font-weight: bold; margin: 0;">RIAU BERSATU MANDIRI (RBM)</h2>
-                    <p style="font-size: 12px; margin: 5px 0 0 0;">LAPORAN TRANSAKSI & ARUS KAS KEUANGAN</p>
-                </div>
-                <p style="font-size: 11px; margin-bottom: 10px;">Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}</p>
-                <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px;">
-                    <thead>
-                        <tr style="background-color: #f2f2f2; border-bottom: 2px solid #000; text-align: left;">
-                            <th style="padding: 8px;">No</th>
-                            <th style="padding: 8px;">Jenis</th>
-                            <th style="padding: 8px;">Keterangan Keperluan</th>
-                            <th style="padding: 8px;">Uang Masuk</th>
-                            <th style="padding: 8px;">Pengeluaran</th>
-                        </tr>
-                    </thead>
-                    <tbody>${rows}</tbody>
-                </table>
-                <div style="border: 1px solid #ccc; padding: 12px; font-size: 12px; max-width: 300px; margin-left: auto;">
-                    <p style="margin: 2px 0;"><b>Total Masuk:</b> Rp ${totalIncome.toLocaleString('id-ID')}</p>
-                    <p style="margin: 2px 0;"><b>Total Keluar:</b> Rp ${totalExpense.toLocaleString('id-ID')}</p>
-                    <hr style="margin: 5px 0;">
-                    <p style="margin: 2px 0; font-size: 13px;"><b>Saldo Kas Akhir:</b> Rp ${(totalIncome - totalExpense).toLocaleString('id-ID')}</p>
-                </div>
-            `;
-
-            window.print();
-            printArea.classList.add('hidden');
-        }
+        function exportMemberReport() { window.print(); }
+        function exportFinanceReport() { window.print(); }
     </script>
 </body>
 </html>
