@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- QRCode.js untuk Generate QR Code -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- Tesseract.js untuk OCR / Pindai Foto KTP & Tulisan Tangan -->
+    <!-- Tesseract.js untuk OCR / Pindai Foto KTP -->
     <script src="https://unpkg.com/tesseract.js@v4.0.2/dist/tesseract.min.js"></script>
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -34,9 +34,9 @@
                 <div class="bg-white text-emerald-700 p-2 rounded-lg font-bold text-lg shadow">RBM</div>
                 <div>
                     <h1 class="font-bold text-base leading-tight">Riau Bersatu Mandiri</h1>
-                    <p class="text-xs text-emerald-200 flex items-center gap-1">
+                    <p class="text-xs text-emerald-200 flex items-center gap-1.5">
                         <span>Sistem Administrasi & Keuangan</span>
-                        <span id="sync-status" class="bg-emerald-800 text-[10px] px-1.5 py-0.5 rounded text-emerald-300">● Cloud Active</span>
+                        <span id="sync-badge" class="bg-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-medium">● Hubungkan Cloud...</span>
                     </p>
                 </div>
             </div>
@@ -378,7 +378,7 @@
         </div>
     </div>
 
-    <!-- SCRIPT APLIKASI UTAMA (INTEGRASI SUPABASE CLOUD) -->
+    <!-- SCRIPT APLIKASI UTAMA (DENGAN RECOVERY LOCAL + CLOUD SINKRONISASI PUSAT) -->
     <script>
         // INISIALISASI SUPABASE DATABASE
         const SUPABASE_URL = "https://fwragnhyftlyikpynpvl.supabase.co";
@@ -390,67 +390,99 @@
             { id: '2', name: 'Arnius Putra', email: 'arniusputra6895@gmail.com', pass: '@Simarmata28' }
         ];
 
-        let dbAdmins = defaultAdmins;
-        let dbMembers = [
+        let dbAdmins = JSON.parse(localStorage.getItem('rbm_admins')) || defaultAdmins;
+        let dbMembers = JSON.parse(localStorage.getItem('rbm_members')) || [
             { id: '1', noAnggota: 'RBM-001', name: 'Arnius Simarmata', nik: '1404142801980001', role: 'Ketua', phone: '082383301041', loper: 'Pekanbaru' }
         ];
-        let dbFinance = [];
+        let dbFinance = JSON.parse(localStorage.getItem('rbm_finance')) || [];
         let currentUser = JSON.parse(localStorage.getItem('rbm_current_user')) || null;
 
         let activeOtpCode = null;
         let pendingAction = null;
 
         window.onload = async function() {
-            await loadDataFromCloud();
+            renderLocalDataUI();
+            await syncCloudData();
             if (currentUser) {
                 renderApp();
             }
             subscribeRealtimeCloud();
         };
 
-        // BACA DATA DARI SUPABASE CLOUD
-        async function loadDataFromCloud() {
-            try {
-                const { data, error } = await supabaseClient.from('rbm_data').select('*');
-                if (data && !error) {
-                    data.forEach(row => {
-                        if (row.id === 'admins') dbAdmins = row.data || defaultAdmins;
-                        if (row.id === 'members') dbMembers = row.data || [];
-                        if (row.id === 'finance') dbFinance = row.data || [];
-                    });
-                    if (currentUser && currentUser.role === 'admin') {
-                        renderMembersList();
-                        renderFinanceList();
-                        renderAdminsList();
-                    } else if (currentUser && currentUser.role === 'member') {
-                        renderMemberCard();
-                        renderMemberFinanceView();
-                        renderMemberListForMembers();
-                    }
+        function renderLocalDataUI() {
+            if (currentUser) {
+                if (currentUser.role === 'admin') {
+                    renderMembersList();
+                    renderFinanceList();
+                    renderAdminsList();
+                } else if (currentUser.role === 'member') {
+                    renderMemberCard();
+                    renderMemberFinanceView();
+                    renderMemberListForMembers();
                 }
-            } catch (err) {
-                console.error("Gagal terhubung ke Cloud Database:", err);
             }
         }
 
-        // SIMPAN DATA KE SUPABASE CLOUD
-        async function saveData() {
-            localStorage.setItem('rbm_current_user', JSON.stringify(currentUser));
-            
+        function updateSyncBadge(statusText, isConnected) {
+            const badge = document.getElementById('sync-badge');
+            if (badge) {
+                badge.innerText = statusText;
+                badge.className = isConnected 
+                    ? "bg-emerald-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium" 
+                    : "bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium";
+            }
+        }
+
+        // AMBIL & SINKRONKAN DATA CLOUD TERBARU
+        async function syncCloudData() {
             try {
+                const { data, error } = await supabaseClient.from('rbm_data').select('*');
+                if (!error && data && data.length > 0) {
+                    data.forEach(row => {
+                        if (row.id === 'admins' && row.data) dbAdmins = row.data;
+                        if (row.id === 'members' && row.data) dbMembers = row.data;
+                        if (row.id === 'finance' && row.data) dbFinance = row.data;
+                    });
+                    
+                    // Simpan ke memori HP sebagai cadangan cepat
+                    localStorage.setItem('rbm_admins', JSON.stringify(dbAdmins));
+                    localStorage.setItem('rbm_members', JSON.stringify(dbMembers));
+                    localStorage.setItem('rbm_finance', JSON.stringify(dbFinance));
+
+                    renderLocalDataUI();
+                    updateSyncBadge("● Online Cloud", true);
+                } else {
+                    // Jika cloud masih kosong, kirimkan data lokal pertama kali ke cloud
+                    await pushAllToCloud();
+                    updateSyncBadge("● Online Cloud", true);
+                }
+            } catch (err) {
+                console.error("Cloud offline, menggunakan data HP:", err);
+                updateSyncBadge("● Mode Lokal (Offline)", false);
+            }
+        }
+
+        // KIRIMKAN PEMBARUAN DATA KE CLOUD SUPABASE
+        async function pushAllToCloud() {
+            try {
+                localStorage.setItem('rbm_admins', JSON.stringify(dbAdmins));
+                localStorage.setItem('rbm_members', JSON.stringify(dbMembers));
+                localStorage.setItem('rbm_finance', JSON.stringify(dbFinance));
+                localStorage.setItem('rbm_current_user', JSON.stringify(currentUser));
+
                 await supabaseClient.from('rbm_data').upsert({ id: 'admins', data: dbAdmins });
                 await supabaseClient.from('rbm_data').upsert({ id: 'members', data: dbMembers });
                 await supabaseClient.from('rbm_data').upsert({ id: 'finance', data: dbFinance });
             } catch (err) {
-                console.error("Gagal sinkronisasi data ke Cloud:", err);
+                console.error("Gagal simpan ke Cloud:", err);
             }
         }
 
-        // BERLANGGANAN PEMBARUAN REALTIME SINKRONISASI OTOMATIS
+        // SINKRONISASI REALTIME DETIK ITU JUGA
         function subscribeRealtimeCloud() {
             supabaseClient.channel('public:rbm_data')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'rbm_data' }, async payload => {
-                    await loadDataFromCloud();
+                    await syncCloudData();
                 })
                 .subscribe();
         }
@@ -486,7 +518,7 @@
 
             if (isOwnerEmail && isValidPass) {
                 currentUser = { role: 'admin', name: 'Arnius Simarmata', email: email };
-                saveData();
+                pushAllToCloud();
                 renderApp();
                 return;
             }
@@ -495,7 +527,7 @@
 
             if (foundAdmin) {
                 currentUser = { role: 'admin', name: foundAdmin.name, email: foundAdmin.email };
-                saveData();
+                pushAllToCloud();
                 renderApp();
             } else {
                 alert('Email atau Kata Sandi Admin salah! Silakan periksa kembali.');
@@ -508,7 +540,7 @@
             const found = dbMembers.find(m => m.nik === nik);
             if (found) {
                 currentUser = { role: 'member', ...found };
-                saveData();
+                pushAllToCloud();
                 renderApp();
             } else {
                 alert('NIK tidak ditemukan dalam data anggota. Silakan hubungi Admin.');
@@ -636,7 +668,7 @@
             if (pendingAction.type === 'add') {
                 const { name, email, pass } = pendingAction.payload;
                 dbAdmins.push({ id: Date.now().toString(), name, email, pass });
-                await saveData();
+                await pushAllToCloud();
                 renderAdminsList();
                 document.getElementById('add-admin-name').value = "";
                 document.getElementById('add-admin-email').value = "";
@@ -645,7 +677,7 @@
             } else if (pendingAction.type === 'delete') {
                 const { id, name } = pendingAction.payload;
                 dbAdmins = dbAdmins.filter(a => a.id !== id);
-                await saveData();
+                await pushAllToCloud();
                 renderAdminsList();
                 alert(`Persetujuan OTP Berhasil! Admin (${name}) telah dihapus dari sistem.`);
             }
@@ -767,7 +799,7 @@
                 alert(`Anggota berhasil ditambahkan!\nNo. Anggota: ${nextNo}`);
             }
 
-            await saveData();
+            await pushAllToCloud();
             renderMembersList();
             cancelEditMember();
         }
@@ -813,7 +845,7 @@
         async function deleteMember(id) {
             if (confirm('Yakin ingin menghapus anggota ini?')) {
                 dbMembers = dbMembers.filter(m => m.id !== id);
-                await saveData();
+                await pushAllToCloud();
                 renderMembersList();
             }
         }
@@ -859,7 +891,7 @@
                         desc,
                         proof: uploadEvent.target.result
                     });
-                    await saveData();
+                    await pushAllToCloud();
                     renderFinanceList();
                     e.target.reset();
                     alert('Transaksi dan bukti foto berhasil dicatat!');
@@ -873,7 +905,7 @@
                     desc,
                     proof: ''
                 });
-                await saveData();
+                await pushAllToCloud();
                 renderFinanceList();
                 e.target.reset();
                 alert('Transaksi berhasil dicatat (tanpa bukti foto).');
@@ -883,7 +915,7 @@
         async function deleteTransaction(id) {
             if (confirm('Hapus catatan transaksi ini?')) {
                 dbFinance = dbFinance.filter(t => t.id !== id);
-                await saveData();
+                await pushAllToCloud();
                 renderFinanceList();
             }
         }
