@@ -119,15 +119,15 @@
                     <form onsubmit="handleAddMember(event)" class="space-y-3">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-medium text-slate-600 mb-1">Nama Lengkap</label>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Nama Lengkap (Sesuai KTP)</label>
                                 <input type="text" id="add-name" required placeholder="Nama sesuai KTP" class="w-full px-3 py-2 text-xs border rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-slate-600 mb-1">NIK</label>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">NIK (Sesuai KTP)</label>
                                 <input type="text" id="add-nik" required placeholder="16 digit NIK" class="w-full px-3 py-2 text-xs border rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
                             </div>
                         </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">Jabatan / Peran</label>
                                 <select id="add-role" onchange="handleRoleChange()" class="w-full px-3 py-2 text-xs border rounded-lg outline-none bg-white">
@@ -144,6 +144,10 @@
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">Nomor Telepon / WhatsApp</label>
                                 <input type="text" id="add-phone" placeholder="08xxxxxxxxxx" class="w-full px-3 py-2 text-xs border rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Loper (Tempat Tinggal / Wilayah)</label>
+                                <input type="text" id="add-loper-location" placeholder="Contoh: Panam / Tampan" class="w-full px-3 py-2 text-xs border rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
                             </div>
                         </div>
 
@@ -282,7 +286,8 @@
                 </div>
                 <h2 id="member-card-name" class="text-lg font-bold text-slate-900">-</h2>
                 <p id="member-card-role" class="text-xs text-emerald-600 font-medium mb-1">-</p>
-                <p id="member-card-no" class="text-xs text-slate-600 font-semibold mb-4">No. Anggota: -</p>
+                <p id="member-card-no" class="text-xs text-slate-600 font-semibold mb-1">No. Anggota: -</p>
+                <p id="member-card-loper" class="text-xs text-slate-500 mb-4">Loper: -</p>
                 
                 <div class="border-t pt-4 mt-4">
                     <h4 class="text-xs font-bold text-slate-700 mb-3">QR Code Identitas Anggota</h4>
@@ -376,15 +381,13 @@
         let dbAdmins = defaultAdmins;
 
         let dbMembers = JSON.parse(localStorage.getItem('rbm_members')) || [
-            { id: '1', noAnggota: 'RBM-001', name: 'Arnius Simarmata', nik: '1404142801980001', role: 'Ketua', phone: '081234567890' },
-            { id: '2', noAnggota: 'RBM-002', name: 'Siti Aminah', nik: '1471029876540002', role: 'Seksi (Bidang Pendataan)', phone: '089876543210' }
+            { id: '1', noAnggota: 'RBM-001', name: 'Arnius Simarmata', nik: '1404142801980001', role: 'Ketua', phone: '082383301041', loper: 'Pekanbaru' },
+            { id: '2', noAnggota: 'RBM-002', name: 'Siti Aminah', nik: '1471029876540002', role: 'Seksi (Bidang Pendataan)', phone: '089876543210', loper: 'Panam' }
         ];
 
-        // Memastikan seluruh anggota lama memiliki Nomor Anggota Otomatis
         dbMembers = dbMembers.map((m, idx) => {
-            if (!m.noAnggota) {
-                m.noAnggota = 'RBM-' + String(idx + 1).padStart(3, '0');
-            }
+            if (!m.noAnggota) m.noAnggota = 'RBM-' + String(idx + 1).padStart(3, '0');
+            if (!m.loper) m.loper = '-';
             return m;
         });
 
@@ -645,7 +648,7 @@
             }
         }
 
-        // --- FITUR OCR (PINDAI DOKUMEN / KTP / TULIS TANGAN) ---
+        // --- FITUR OCR (PINDAI DOKUMEN / KTP) ---
         function processDocumentScan(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -679,13 +682,14 @@
             });
         }
 
-        // --- KELOLA ANGGOTA DENGAN NOMOR ANGGOTA OTOMATIS ---
+        // --- KELOLA ANGGOTA DENGAN LOPER & NOMOR ANGGOTA OTOMATIS ---
         function handleAddMember(e) {
             e.preventDefault();
-            const name = document.getElementById('add-name').value;
-            const nik = document.getElementById('add-nik').value;
+            const name = document.getElementById('add-name').value.trim();
+            const nik = document.getElementById('add-nik').value.trim();
             const baseRole = document.getElementById('add-role').value;
-            const phone = document.getElementById('add-phone').value;
+            const phone = document.getElementById('add-phone').value.trim();
+            const loper = document.getElementById('add-loper-location').value.trim() || '-';
 
             let finalRole = baseRole;
             if (baseRole === 'Seksi') {
@@ -693,7 +697,6 @@
                 finalRole = seksiCustomName ? `Seksi (${seksiCustomName})` : 'Seksi Bidang';
             }
 
-            // Generate Nomor Anggota Otomatis (Contoh: RBM-003)
             const nextNo = 'RBM-' + String(dbMembers.length + 1).padStart(3, '0');
 
             dbMembers.push({
@@ -702,14 +705,15 @@
                 name,
                 nik,
                 role: finalRole,
-                phone
+                phone,
+                loper
             });
             saveData();
             renderMembersList();
 
             e.target.reset();
             document.getElementById('seksi-field-container').classList.add('hidden');
-            alert(`Anggota berhasil ditambahkan dengan Nomor Anggota: ${nextNo}`);
+            alert(`Anggota berhasil ditambahkan!\nNo. Anggota: ${nextNo}\nLoper: ${loper}`);
         }
 
         function deleteMember(id) {
@@ -733,7 +737,7 @@
                             <span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded ml-1 font-semibold">${m.noAnggota || 'RBM-000'}</span>
                             <span class="text-[10px] bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded ml-1">${m.role}</span>
                         </h4>
-                        <p class="text-[11px] text-slate-500">NIK: ${m.nik} | Telp: ${m.phone || '-'}</p>
+                        <p class="text-[11px] text-slate-500">NIK: ${m.nik} | Telp: ${m.phone || '-'} | Loper: <span class="font-semibold text-slate-700">${m.loper || '-'}</span></p>
                     </div>
                     <button onclick="deleteMember('${m.id}')" class="text-rose-500 hover:text-rose-700 text-xs px-2 py-1"><i class="fa-solid fa-trash"></i></button>
                 </div>
@@ -838,12 +842,12 @@
             document.getElementById('member-card-name').innerText = currentUser.name;
             document.getElementById('member-card-role').innerText = currentUser.role;
             document.getElementById('member-card-no').innerText = "No. Anggota: " + (currentUser.noAnggota || 'RBM-001');
+            document.getElementById('member-card-loper').innerText = "Loper: " + (currentUser.loper || '-');
 
             const qrContainer = document.getElementById('qrcode-container');
             qrContainer.innerHTML = "";
 
-            // QR Code TANPA NIK (Hanya Nama, Nomor Anggota, dan Jabatan)
-            const qrText = `Riau Bersatu Mandiri\nNama: ${currentUser.name}\nNo. Anggota: ${currentUser.noAnggota || 'RBM-001'}\nJabatan: ${currentUser.role}`;
+            const qrText = `Riau Bersatu Mandiri\nNama: ${currentUser.name}\nNo. Anggota: ${currentUser.noAnggota || 'RBM-001'}\nJabatan: ${currentUser.role}\nLoper: ${currentUser.loper || '-'}`;
 
             new QRCode(qrContainer, {
                 text: qrText,
@@ -895,7 +899,7 @@
             `).join('');
         }
 
-        // --- FITUR UNDUH DOKUMEN LAPORAN ANGGOTA & KEUANGAN ---
+        // --- FITUR UNDUH DOKUMEN LAPORAN ANGGOTA (TERMASUK LOPER) & KEUANGAN ---
         function exportMemberReport() {
             const printArea = document.getElementById('print-area');
             printArea.classList.remove('hidden');
@@ -908,6 +912,7 @@
                     <td style="padding: 8px;">'${m.nik}</td>
                     <td style="padding: 8px;">${m.role}</td>
                     <td style="padding: 8px;">${m.phone || '-'}</td>
+                    <td style="padding: 8px;">${m.loper || '-'}</td>
                 </tr>
             `).join('');
 
@@ -917,7 +922,7 @@
                     <p style="font-size: 12px; margin: 5px 0 0 0;">LAPORAN DATA ANGGOTA & PENGURUS TERDAFTAR</p>
                 </div>
                 <p style="font-size: 11px; margin-bottom: 10px;">Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}</p>
-                <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
                     <thead>
                         <tr style="background-color: #f2f2f2; border-bottom: 2px solid #000; text-align: left;">
                             <th style="padding: 8px;">No</th>
@@ -926,6 +931,7 @@
                             <th style="padding: 8px;">NIK</th>
                             <th style="padding: 8px;">Jabatan</th>
                             <th style="padding: 8px;">No. Telepon</th>
+                            <th style="padding: 8px;">Loper (Tempat)</th>
                         </tr>
                     </thead>
                     <tbody>${rows}</tbody>
