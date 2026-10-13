@@ -36,7 +36,7 @@
                     <h1 class="font-bold text-base leading-tight">Riau Bersatu Mandiri</h1>
                     <p class="text-xs text-emerald-200 flex items-center gap-1.5">
                         <span>Sistem Administrasi & Keuangan</span>
-                        <span id="sync-badge" class="bg-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-medium">● Hubungkan Cloud...</span>
+                        <button onclick="syncCloudData()" id="sync-badge" class="bg-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-medium active:scale-95 transition">● Hubungkan Cloud...</button>
                     </p>
                 </div>
             </div>
@@ -378,9 +378,10 @@
         </div>
     </div>
 
-    <!-- SCRIPT APLIKASI UTAMA (DENGAN REALTIME REFRESH OTOMATIS) -->
+    <!-- SCRIPT APLIKASI UTAMA (DENGAN SINKRONISASI SUPABASE TERHUBUNG LENGKAP) -->
     <script>
-        const SUPABASE_URL = "https://fwragnhyftlyikpynpvl.supabase.co";
+        // URL DATABASE SUPABASE DISAMAKAN SAMA PROYEK AKTIF
+        const SUPABASE_URL = "https://hihhduyzosdrzbvtxsts.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_FR47_uA2_HAesqrPGvzmoA_n0KL358W";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -412,13 +413,14 @@
             if (badge) {
                 badge.innerText = statusText;
                 badge.className = isConnected 
-                    ? "bg-emerald-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium" 
-                    : "bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium";
+                    ? "bg-emerald-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium shadow" 
+                    : "bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium shadow";
             }
         }
 
-        // AMBIL DATA DARI CLOUD
+        // AMBIL DATA DARI SUPABASE
         async function syncCloudData() {
+            updateSyncBadge("● Menyinkronkan...", false);
             try {
                 const { data, error } = await supabaseClient.from('rbm_data').select('*');
                 if (!error && data && data.length > 0) {
@@ -439,12 +441,12 @@
                     updateSyncBadge("● Online Cloud", true);
                 }
             } catch (err) {
-                console.error("Gagal ambil data cloud:", err);
-                updateSyncBadge("● Offline", false);
+                console.error("Gagal terhubung:", err);
+                updateSyncBadge("● Offline (Ketuk)", false);
             }
         }
 
-        // KIRIM DATA KE CLOUD
+        // SIMPAN DATA KE SUPABASE
         async function pushAllToCloud() {
             try {
                 localStorage.setItem('rbm_current_user', JSON.stringify(currentUser));
@@ -456,12 +458,11 @@
             }
         }
 
-        // REALTIME LISTENER (OTOMATIS REFRESH DI HP LAIN)
+        // SINKRONISASI OTOMATIS SAAT ADA DOKUMEN BERUBAH
         function subscribeRealtimeCloud() {
             supabaseClient.channel('public:rbm_data')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'rbm_data' }, async payload => {
                     await syncCloudData();
-                    console.log("Data diperbarui secara realtime dari perangkat lain.");
                 })
                 .subscribe();
         }
