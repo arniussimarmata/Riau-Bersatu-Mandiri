@@ -12,8 +12,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <!-- Tesseract.js untuk OCR / Pindai Foto KTP & Tulisan Tangan -->
     <script src="https://unpkg.com/tesseract.js@v4.0.2/dist/tesseract.min.js"></script>
-    <!-- EmailJS SDK untuk Pengiriman OTP ke Email Pemilik Utama -->
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -34,7 +34,10 @@
                 <div class="bg-white text-emerald-700 p-2 rounded-lg font-bold text-lg shadow">RBM</div>
                 <div>
                     <h1 class="font-bold text-base leading-tight">Riau Bersatu Mandiri</h1>
-                    <p class="text-xs text-emerald-200">Sistem Administrasi & Keuangan</p>
+                    <p class="text-xs text-emerald-200 flex items-center gap-1">
+                        <span>Sistem Administrasi & Keuangan</span>
+                        <span id="sync-status" class="bg-emerald-800 text-[10px] px-1.5 py-0.5 rounded text-emerald-300">● Cloud Active</span>
+                    </p>
                 </div>
             </div>
             <div id="user-info-section" class="hidden flex items-center space-x-2">
@@ -105,18 +108,20 @@
             <div id="content-admin-members" class="space-y-4">
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
                     <h3 class="font-bold text-sm text-slate-800 mb-3 flex items-center justify-between">
-                        <span>Pendaftaran Anggota Baru / Loper</span>
+                        <span id="form-member-title">Pendaftaran Anggota Baru / Loper</span>
                         <span class="text-xs text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">Scan KTP / Dokumen</span>
                     </h3>
                     
                     <!-- Fitur Pindai Dokumen/KTP/Catatan -->
-                    <div class="mb-4 p-3 bg-slate-50 border border-dashed border-slate-300 rounded-xl">
+                    <div id="scan-container" class="mb-4 p-3 bg-slate-50 border border-dashed border-slate-300 rounded-xl">
                         <label class="block text-xs font-medium text-slate-600 mb-1">Unggah Foto KTP / Catatan / Dokumen (Isi Otomatis)</label>
                         <input type="file" accept="image/*" id="scan-doc-input" onchange="processDocumentScan(event)" class="w-full text-xs text-slate-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer">
                         <p id="scan-status" class="text-xs text-amber-600 mt-1.5 hidden"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Sedang membaca teks dari foto...</p>
                     </div>
 
-                    <form onsubmit="handleAddMember(event)" class="space-y-3">
+                    <form id="form-member-input" onsubmit="handleAddMember(event)" class="space-y-3">
+                        <input type="hidden" id="edit-member-id" value="">
+                        
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">Nama Lengkap (Sesuai KTP)</label>
@@ -157,8 +162,10 @@
                             <input type="text" id="add-seksi-name" placeholder="Tuliskan nama bidang seksi secara manual" class="w-full px-3 py-2 text-xs border rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
                         </div>
 
-                        <p class="text-xs text-slate-400 italic">* Anda dapat memperbaiki data secara manual di atas jika hasil pindai foto kurang tepat.</p>
-                        <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-lg text-xs transition shadow">Simpan Anggota Baru</button>
+                        <div class="flex space-x-2">
+                            <button type="submit" id="btn-save-member" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 rounded-lg text-xs transition shadow">Simpan Anggota Baru</button>
+                            <button type="button" id="btn-cancel-edit-member" onclick="cancelEditMember()" class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold px-4 py-2 rounded-lg text-xs transition">Batal</button>
+                        </div>
                     </form>
                 </div>
 
@@ -371,48 +378,81 @@
         </div>
     </div>
 
-    <!-- SCRIPT APLIKASI UTAMA -->
+    <!-- SCRIPT APLIKASI UTAMA (INTEGRASI SUPABASE CLOUD) -->
     <script>
+        // INISIALISASI SUPABASE DATABASE
+        const SUPABASE_URL = "https://fwragnhyftlyikpynpvl.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_FR47_uA2_HAesqrPGvzmoA_n0KL358W";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
         const defaultAdmins = [
             { id: '1', name: 'Arnius Simarmata', email: 'arniussimarmata@gmail.com', pass: '@Simarmata28' },
             { id: '2', name: 'Arnius Putra', email: 'arniusputra6895@gmail.com', pass: '@Simarmata28' }
         ];
 
         let dbAdmins = defaultAdmins;
-
-        let dbMembers = JSON.parse(localStorage.getItem('rbm_members')) || [
-            { id: '1', noAnggota: 'RBM-001', name: 'Arnius Simarmata', nik: '1404142801980001', role: 'Ketua', phone: '082383301041', loper: 'Pekanbaru' },
-            { id: '2', noAnggota: 'RBM-002', name: 'Siti Aminah', nik: '1471029876540002', role: 'Seksi (Bidang Pendataan)', phone: '089876543210', loper: 'Panam' }
+        let dbMembers = [
+            { id: '1', noAnggota: 'RBM-001', name: 'Arnius Simarmata', nik: '1404142801980001', role: 'Ketua', phone: '082383301041', loper: 'Pekanbaru' }
         ];
-
-        dbMembers = dbMembers.map((m, idx) => {
-            if (!m.noAnggota) m.noAnggota = 'RBM-' + String(idx + 1).padStart(3, '0');
-            if (!m.loper) m.loper = '-';
-            return m;
-        });
-
-        let dbFinance = JSON.parse(localStorage.getItem('rbm_finance')) || [
-            { id: '1', type: 'Masuk', amount: 150000, desc: 'Iuran Wajib Anggota', proof: '' },
-            { id: '2', type: 'Keluar', amount: 50000, desc: 'Cetak Atribut Loper', proof: '' }
-        ];
-
+        let dbFinance = [];
         let currentUser = JSON.parse(localStorage.getItem('rbm_current_user')) || null;
 
         let activeOtpCode = null;
         let pendingAction = null;
 
-        window.onload = function() {
-            saveData();
+        window.onload = async function() {
+            await loadDataFromCloud();
             if (currentUser) {
                 renderApp();
             }
+            subscribeRealtimeCloud();
         };
 
-        function saveData() {
-            localStorage.setItem('rbm_admins', JSON.stringify(dbAdmins));
-            localStorage.setItem('rbm_members', JSON.stringify(dbMembers));
-            localStorage.setItem('rbm_finance', JSON.stringify(dbFinance));
+        // BACA DATA DARI SUPABASE CLOUD
+        async function loadDataFromCloud() {
+            try {
+                const { data, error } = await supabaseClient.from('rbm_data').select('*');
+                if (data && !error) {
+                    data.forEach(row => {
+                        if (row.id === 'admins') dbAdmins = row.data || defaultAdmins;
+                        if (row.id === 'members') dbMembers = row.data || [];
+                        if (row.id === 'finance') dbFinance = row.data || [];
+                    });
+                    if (currentUser && currentUser.role === 'admin') {
+                        renderMembersList();
+                        renderFinanceList();
+                        renderAdminsList();
+                    } else if (currentUser && currentUser.role === 'member') {
+                        renderMemberCard();
+                        renderMemberFinanceView();
+                        renderMemberListForMembers();
+                    }
+                }
+            } catch (err) {
+                console.error("Gagal terhubung ke Cloud Database:", err);
+            }
+        }
+
+        // SIMPAN DATA KE SUPABASE CLOUD
+        async function saveData() {
             localStorage.setItem('rbm_current_user', JSON.stringify(currentUser));
+            
+            try {
+                await supabaseClient.from('rbm_data').upsert({ id: 'admins', data: dbAdmins });
+                await supabaseClient.from('rbm_data').upsert({ id: 'members', data: dbMembers });
+                await supabaseClient.from('rbm_data').upsert({ id: 'finance', data: dbFinance });
+            } catch (err) {
+                console.error("Gagal sinkronisasi data ke Cloud:", err);
+            }
+        }
+
+        // BERLANGGANAN PEMBARUAN REALTIME SINKRONISASI OTOMATIS
+        function subscribeRealtimeCloud() {
+            supabaseClient.channel('public:rbm_data')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'rbm_data' }, async payload => {
+                    await loadDataFromCloud();
+                })
+                .subscribe();
         }
 
         // --- MANAJEMEN TAB LOGIN ---
@@ -585,7 +625,7 @@
             alert(`[Pemberitahuan Sistem RBM]\nKode OTP Persetujuan Anda adalah: ${activeOtpCode}\n\nMasukkan kode 6 digit di atas pada kotak verifikasi yang muncul di layar.`);
         }
 
-        function confirmOtpSubmission() {
+        async function confirmOtpSubmission() {
             const enteredOtp = document.getElementById('otp-input-code').value.trim();
 
             if (enteredOtp !== activeOtpCode) {
@@ -596,7 +636,7 @@
             if (pendingAction.type === 'add') {
                 const { name, email, pass } = pendingAction.payload;
                 dbAdmins.push({ id: Date.now().toString(), name, email, pass });
-                saveData();
+                await saveData();
                 renderAdminsList();
                 document.getElementById('add-admin-name').value = "";
                 document.getElementById('add-admin-email').value = "";
@@ -605,7 +645,7 @@
             } else if (pendingAction.type === 'delete') {
                 const { id, name } = pendingAction.payload;
                 dbAdmins = dbAdmins.filter(a => a.id !== id);
-                saveData();
+                await saveData();
                 renderAdminsList();
                 alert(`Persetujuan OTP Berhasil! Admin (${name}) telah dihapus dari sistem.`);
             }
@@ -682,9 +722,10 @@
             });
         }
 
-        // --- KELOLA ANGGOTA DENGAN LOPER & NOMOR ANGGOTA OTOMATIS ---
-        function handleAddMember(e) {
+        // --- KELOLA ANGGOTA (PENDAFTARAN & PERBAIKAN / EDIT DATA) ---
+        async function handleAddMember(e) {
             e.preventDefault();
+            const editId = document.getElementById('edit-member-id').value;
             const name = document.getElementById('add-name').value.trim();
             const nik = document.getElementById('add-nik').value.trim();
             const baseRole = document.getElementById('add-role').value;
@@ -697,29 +738,82 @@
                 finalRole = seksiCustomName ? `Seksi (${seksiCustomName})` : 'Seksi Bidang';
             }
 
-            const nextNo = 'RBM-' + String(dbMembers.length + 1).padStart(3, '0');
+            if (editId) {
+                // Proses Update / Perbaiki Data
+                const index = dbMembers.findIndex(m => m.id === editId);
+                if (index !== -1) {
+                    dbMembers[index] = {
+                        ...dbMembers[index],
+                        name,
+                        nik,
+                        role: finalRole,
+                        phone,
+                        loper
+                    };
+                    alert('Data Anggota berhasil diperbarui di seluruh HP!');
+                }
+            } else {
+                // Proses Tambah Anggota Baru
+                const nextNo = 'RBM-' + String(dbMembers.length + 1).padStart(3, '0');
+                dbMembers.push({
+                    id: Date.now().toString(),
+                    noAnggota: nextNo,
+                    name,
+                    nik,
+                    role: finalRole,
+                    phone,
+                    loper
+                });
+                alert(`Anggota berhasil ditambahkan!\nNo. Anggota: ${nextNo}`);
+            }
 
-            dbMembers.push({
-                id: Date.now().toString(),
-                noAnggota: nextNo,
-                name,
-                nik,
-                role: finalRole,
-                phone,
-                loper
-            });
-            saveData();
+            await saveData();
             renderMembersList();
-
-            e.target.reset();
-            document.getElementById('seksi-field-container').classList.add('hidden');
-            alert(`Anggota berhasil ditambahkan!\nNo. Anggota: ${nextNo}\nLoper: ${loper}`);
+            cancelEditMember();
         }
 
-        function deleteMember(id) {
+        function editMember(id) {
+            const member = dbMembers.find(m => m.id === id);
+            if (!member) return;
+
+            document.getElementById('edit-member-id').value = member.id;
+            document.getElementById('add-name').value = member.name;
+            document.getElementById('add-nik').value = member.nik;
+            document.getElementById('add-phone').value = member.phone || '';
+            document.getElementById('add-loper-location').value = member.loper || '';
+
+            if (member.role.startsWith('Seksi')) {
+                document.getElementById('add-role').value = 'Seksi';
+                document.getElementById('seksi-field-container').classList.remove('hidden');
+                const customName = member.role.replace('Seksi (', '').replace(')', '');
+                document.getElementById('add-seksi-name').value = customName !== 'Seksi Bidang' ? customName : '';
+            } else {
+                document.getElementById('add-role').value = member.role;
+                document.getElementById('seksi-field-container').classList.add('hidden');
+            }
+
+            document.getElementById('form-member-title').innerText = "Perbaiki Data Anggota (" + member.noAnggota + ")";
+            document.getElementById('btn-save-member').innerText = "Simpan Perubahan Data";
+            document.getElementById('btn-cancel-edit-member').classList.remove('hidden');
+            document.getElementById('scan-container').classList.add('hidden');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelEditMember() {
+            document.getElementById('edit-member-id').value = "";
+            document.getElementById('form-member-input').reset();
+            document.getElementById('form-member-title').innerText = "Pendaftaran Anggota Baru / Loper";
+            document.getElementById('btn-save-member').innerText = "Simpan Anggota Baru";
+            document.getElementById('btn-cancel-edit-member').classList.add('hidden');
+            document.getElementById('scan-container').classList.remove('hidden');
+            document.getElementById('seksi-field-container').classList.add('hidden');
+        }
+
+        async function deleteMember(id) {
             if (confirm('Yakin ingin menghapus anggota ini?')) {
                 dbMembers = dbMembers.filter(m => m.id !== id);
-                saveData();
+                await saveData();
                 renderMembersList();
             }
         }
@@ -739,13 +833,16 @@
                         </h4>
                         <p class="text-[11px] text-slate-500">NIK: ${m.nik} | Telp: ${m.phone || '-'} | Loper: <span class="font-semibold text-slate-700">${m.loper || '-'}</span></p>
                     </div>
-                    <button onclick="deleteMember('${m.id}')" class="text-rose-500 hover:text-rose-700 text-xs px-2 py-1"><i class="fa-solid fa-trash"></i></button>
+                    <div class="flex items-center space-x-1">
+                        <button onclick="editMember('${m.id}')" class="text-amber-600 hover:text-amber-800 text-xs px-2 py-1"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                        <button onclick="deleteMember('${m.id}')" class="text-rose-500 hover:text-rose-700 text-xs px-2 py-1"><i class="fa-solid fa-trash"></i></button>
+                    </div>
                 </div>
             `).join('');
         }
 
         // --- KELOLA KEUANGAN & BUKTI FOTO ---
-        function handleTransaction(e) {
+        async function handleTransaction(e) {
             e.preventDefault();
             const type = document.getElementById('trx-type').value;
             const amount = parseFloat(document.getElementById('trx-amount').value);
@@ -754,7 +851,7 @@
 
             if (fileInput.files && fileInput.files[0]) {
                 const reader = new FileReader();
-                reader.onload = function(uploadEvent) {
+                reader.onload = async function(uploadEvent) {
                     dbFinance.push({
                         id: Date.now().toString(),
                         type,
@@ -762,7 +859,7 @@
                         desc,
                         proof: uploadEvent.target.result
                     });
-                    saveData();
+                    await saveData();
                     renderFinanceList();
                     e.target.reset();
                     alert('Transaksi dan bukti foto berhasil dicatat!');
@@ -776,17 +873,17 @@
                     desc,
                     proof: ''
                 });
-                saveData();
+                await saveData();
                 renderFinanceList();
                 e.target.reset();
                 alert('Transaksi berhasil dicatat (tanpa bukti foto).');
             }
         }
 
-        function deleteTransaction(id) {
+        async function deleteTransaction(id) {
             if (confirm('Hapus catatan transaksi ini?')) {
                 dbFinance = dbFinance.filter(t => t.id !== id);
-                saveData();
+                await saveData();
                 renderFinanceList();
             }
         }
@@ -899,7 +996,7 @@
             `).join('');
         }
 
-        // --- FITUR UNDUH DOKUMEN LAPORAN ANGGOTA (TERMASUK LOPER) & KEUANGAN ---
+        // --- FITUR UNDUH DOKUMEN LAPORAN ---
         function exportMemberReport() {
             const printArea = document.getElementById('print-area');
             printArea.classList.remove('hidden');
