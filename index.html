@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Riau Bersatu Mandiri (RBM)</title>
+    <title>Riau Mandiri Sejahtera (RMS)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome untuk Ikon -->
@@ -31,12 +31,12 @@
     <header class="bg-emerald-700 text-white shadow-md sticky top-0 z-50 print:hidden">
         <div class="max-w-4xl mx-auto px-4 py-3 flex justify-between items-center">
             <div class="flex items-center space-x-2">
-                <div class="bg-white text-emerald-700 p-2 rounded-lg font-bold text-lg shadow">RBM</div>
+                <div class="bg-white text-emerald-700 p-2 rounded-lg font-bold text-lg shadow">RMS</div>
                 <div>
-                    <h1 class="font-bold text-base leading-tight">Riau Bersatu Mandiri</h1>
+                    <h1 class="font-bold text-base leading-tight">Riau Mandiri Sejahtera</h1>
                     <p class="text-xs text-emerald-200 flex items-center gap-1.5">
                         <span>Sistem Administrasi & Keuangan</span>
-                        <button onclick="syncCloudData()" id="sync-badge" class="bg-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-medium active:scale-95 transition">● Hubungkan Cloud...</button>
+                        <button onclick="syncCloudData()" id="sync-badge" class="bg-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-medium shadow">● Hubungkan Cloud...</button>
                     </p>
                 </div>
             </div>
@@ -261,7 +261,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">Email Login Admin Baru</label>
-                                <input type="email" id="add-admin-email" required placeholder="admin2@rbm.com" class="w-full px-3 py-2 text-xs border rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
+                                <input type="email" id="add-admin-email" required placeholder="admin2@rms.com" class="w-full px-3 py-2 text-xs border rounded-lg outline-none focus:ring-1 focus:ring-emerald-500">
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-slate-600 mb-1">Kata Sandi Admin Baru</label>
@@ -348,7 +348,7 @@
 
     <!-- FOOTER -->
     <footer class="bg-white border-t border-slate-100 py-3 text-center text-xs text-slate-400 mt-auto print:hidden">
-        &copy; 2026 Riau Bersatu Mandiri (RBM). All rights reserved.
+        &copy; 2026 Riau Mandiri Sejahtera (RMS). All rights reserved.
     </footer>
 
     <!-- MODAL POPUP VERIFIKASI OTP EMAIL PERSETUJUAN -->
@@ -380,7 +380,6 @@
 
     <!-- SCRIPT APLIKASI UTAMA (DENGAN SINKRONISASI SUPABASE TERHUBUNG LENGKAP) -->
     <script>
-        // URL DATABASE SUPABASE DISAMAKAN SAMA PROYEK AKTIF
         const SUPABASE_URL = "https://hihhduyzosdrzbvtxsts.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_FR47_uA2_HAesqrPGvzmoA_n0KL358W";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -392,10 +391,10 @@
 
         let dbAdmins = defaultAdmins;
         let dbMembers = [
-            { id: '1', noAnggota: 'RBM-001', name: 'Arnius Simarmata', nik: '1404142801980001', role: 'Ketua', phone: '082383301041', loper: 'Pekanbaru' }
+            { id: '1', noAnggota: 'RMS-001', name: 'Arnius Simarmata', nik: '1404142801980001', role: 'Ketua', phone: '082383301041', loper: 'Pekanbaru' }
         ];
         let dbFinance = [];
-        let currentUser = JSON.parse(localStorage.getItem('rbm_current_user')) || null;
+        let currentUser = JSON.parse(localStorage.getItem('rms_current_user')) || null;
 
         let activeOtpCode = null;
         let pendingAction = null;
@@ -449,7 +448,7 @@
         // SIMPAN DATA KE SUPABASE
         async function pushAllToCloud() {
             try {
-                localStorage.setItem('rbm_current_user', JSON.stringify(currentUser));
+                localStorage.setItem('rms_current_user', JSON.stringify(currentUser));
                 await supabaseClient.from('rbm_data').upsert({ id: 'admins', data: dbAdmins });
                 await supabaseClient.from('rbm_data').upsert({ id: 'members', data: dbMembers });
                 await supabaseClient.from('rbm_data').upsert({ id: 'finance', data: dbFinance });
@@ -526,7 +525,7 @@
 
         function logout() {
             currentUser = null;
-            localStorage.removeItem('rbm_current_user');
+            localStorage.removeItem('rms_current_user');
             document.getElementById('view-login').classList.remove('hidden');
             document.getElementById('view-admin-dashboard').classList.add('hidden');
             document.getElementById('view-member-dashboard').classList.add('hidden');
@@ -722,7 +721,7 @@
                     alert('Data Anggota diperbarui.');
                 }
             } else {
-                const nextNo = 'RBM-' + String(dbMembers.length + 1).padStart(3, '0');
+                const nextNo = 'RMS-' + String(dbMembers.length + 1).padStart(3, '0');
                 dbMembers.push({ id: Date.now().toString(), noAnggota: nextNo, name, nik, role: finalRole, phone, loper });
                 alert(`Anggota ditambahkan: ${nextNo}`);
             }
@@ -785,7 +784,7 @@
                 <div class="flex items-center justify-between p-3 bg-slate-50 border rounded-xl">
                     <div>
                         <h4 class="font-bold text-xs text-slate-800">${m.name} 
-                            <span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded ml-1">${m.noAnggota || 'RBM-000'}</span>
+                            <span class="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded ml-1">${m.noAnggota || 'RMS-000'}</span>
                         </h4>
                         <p class="text-[11px] text-slate-500">NIK: ${m.nik} | Loper: ${m.loper || '-'}</p>
                     </div>
@@ -859,13 +858,13 @@
         function renderMemberCard() {
             document.getElementById('member-card-name').innerText = currentUser.name;
             document.getElementById('member-card-role').innerText = currentUser.role;
-            document.getElementById('member-card-no').innerText = "No. Anggota: " + (currentUser.noAnggota || 'RBM-001');
+            document.getElementById('member-card-no').innerText = "No. Anggota: " + (currentUser.noAnggota || 'RMS-001');
             document.getElementById('member-card-loper').innerText = "Loper: " + (currentUser.loper || '-');
 
             const qrContainer = document.getElementById('qrcode-container');
             qrContainer.innerHTML = "";
             new QRCode(qrContainer, {
-                text: `Riau Bersatu Mandiri\nNama: ${currentUser.name}\nNo: ${currentUser.noAnggota || 'RBM-001'}`,
+                text: `Riau Mandiri Sejahtera\nNama: ${currentUser.name}\nNo: ${currentUser.noAnggota || 'RMS-001'}`,
                 width: 140, height: 140
             });
         }
@@ -887,7 +886,7 @@
                 <div class="flex items-center justify-between p-2.5 bg-slate-50 border rounded-xl">
                     <div class="flex items-center space-x-2">
                         <span class="w-6 h-6 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center text-[10px] font-bold">${i + 1}</span>
-                        <h4 class="font-semibold text-xs text-slate-800">${m.name} (${m.noAnggota || 'RBM-000'})</h4>
+                        <h4 class="font-semibold text-xs text-slate-800">${m.name} (${m.noAnggota || 'RMS-000'})</h4>
                     </div>
                     <span class="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg">${m.role}</span>
                 </div>
