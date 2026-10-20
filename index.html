@@ -3,447 +3,230 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#1E5E3A">
-    <title>Kelompok Tani Riau Mandiri Sejahtera (RMS)</title>
-
+    <title>Kelompok Tani Riau Mandiri Sejahtera</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        rms: {
-                            green: '#1E5E3A',
-                            lightgreen: '#2D8A54',
-                            darkgreen: '#0F3D24',
-                            amber: '#D97706',
-                            gold: '#E5A93C',
-                            bg: '#FAF8F5',
-                            card: '#FFFFFF'
-                        }
-                    },
-                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
-                    boxShadow: {
-                        'soft': '0 4px 20px -4px rgba(30, 94, 58, 0.08)',
-                        'card': '0 2px 12px -2px rgba(0, 0, 0, 0.06)'
-                    }
-                }
-            }
-        }
-    </script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-
+    <!-- Library untuk Scan KTP, QR Code, dan Database -->
+    <script src="https://unpkg.com/tesseract.js@v4.0.2/dist/tesseract.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-rms-bg text-slate-800 min-h-screen flex flex-col antialiased">
+<body class="text-slate-800 pb-10">
 
-    <header class="bg-gradient-to-r from-rms-green to-rms-lightgreen text-white shadow-lg sticky top-0 z-50 print:hidden">
-        <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center gap-3">
-            <div class="flex items-center space-x-3 min-w-0">
-                <div class="w-11 h-11 bg-white rounded-full p-0.5 shadow ring-2 ring-amber-300/70 flex items-center justify-center shrink-0 overflow-hidden">
-                    <img src="./logo.jpeg" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
-                </div>
-                <div class="min-w-0">
-                    <p class="font-bold text-[10px] sm:text-xs tracking-wider text-amber-300 leading-tight">KELOMPOK TANI</p>
-                    <h1 class="font-black text-xs sm:text-base leading-tight text-white truncate">Riau Mandiri Sejahtera</h1>
-                </div>
+    <!-- ================= HALAMAN 1: LOGIN ================= -->
+    <div id="halaman-login" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 max-w-sm w-full text-center relative overflow-hidden">
+            <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-green-900 via-amber-500 to-green-900"></div>
+            
+            <div class="w-24 h-24 bg-white rounded-full p-1 mx-auto mb-4 shadow-md border-2 border-green-800 flex items-center justify-center overflow-hidden">
+                <img src="./logo.jpg" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
             </div>
-            <div class="flex items-center space-x-2 shrink-0">
-                <button onclick="syncCloudData()" id="sync-badge"
-                    class="bg-emerald-950/40 hover:bg-emerald-950/60 border border-emerald-400/30 text-amber-200 text-[10px] sm:text-xs px-2.5 py-1.5 rounded-full font-semibold shadow backdrop-blur-sm transition active:scale-95 whitespace-nowrap">
-                    <i class="fa-solid fa-cloud mr-1"></i><span id="sync-text">Menghubungkan…</span>
+            
+            <h2 class="text-xl font-extrabold text-green-900 mb-1">Selamat Datang</h2>
+            <p class="text-xs text-slate-500 mb-6">Sistem Informasi Riau Mandiri Sejahtera</p>
+
+            <div class="flex bg-slate-100 p-1.5 rounded-2xl mb-6">
+                <button onclick="switchLoginTab('admin')" id="tab-admin" class="flex-1 py-2 text-xs font-bold rounded-xl bg-green-900 text-white shadow-sm transition">Pengurus</button>
+                <button onclick="switchLoginTab('member')" id="tab-member" class="flex-1 py-2 text-xs font-bold rounded-xl text-slate-500 transition">Anggota</button>
+            </div>
+
+            <!-- Form Admin -->
+            <form id="form-login-admin" onsubmit="handleLoginAdmin(event)" class="space-y-4 text-left">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1.5">Email Pengurus</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-envelope absolute left-3 top-3 text-slate-400 text-sm"></i>
+                        <input type="email" id="login-email" placeholder="admin@rms.com" required class="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-green-700 transition">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1.5">Kata Sandi</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-3 top-3 text-slate-400 text-sm"></i>
+                        <input type="password" id="login-pass" placeholder="••••••••" required class="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-green-700 transition">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-green-900 hover:bg-green-800 text-white font-bold py-3 rounded-xl shadow-lg transition mt-2 flex justify-center items-center gap-2">
+                    Masuk Sistem <i class="fa-solid fa-arrow-right"></i>
                 </button>
-                <div id="user-info-section" class="hidden items-center space-x-2">
-                    <span id="nav-username" class="hidden sm:inline text-xs bg-emerald-900/70 px-2.5 py-1.5 rounded-lg font-semibold border border-emerald-600/30 max-w-[120px] truncate"></span>
-                    <button onclick="logout()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs px-3 py-1.5 rounded-lg transition shadow font-semibold">
-                        <i class="fa-solid fa-right-from-bracket sm:mr-1"></i><span class="hidden sm:inline">Keluar</span>
-                    </button>
+            </form>
+
+            <!-- Form Anggota -->
+            <form id="form-login-member" onsubmit="handleLoginMember(event)" class="space-y-4 text-left hidden">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1.5">NIK (16 Digit)</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-id-card absolute left-3 top-3 text-slate-400 text-sm"></i>
+                        <input type="text" id="login-nik" placeholder="Masukkan NIK" required maxlength="16" class="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 transition">
+                    </div>
                 </div>
-            </div>
-        </div>
-    </header>
-
-    <main class="max-w-5xl w-full mx-auto p-4 flex-grow print:hidden">
-
-        <section id="view-login" class="max-w-md mx-auto mt-4 sm:mt-10">
-            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-soft border border-amber-100/70">
-                <div class="text-center mb-6">
-                    <div class="w-28 h-28 bg-white rounded-full p-1 mx-auto mb-4 shadow-md ring-2 ring-rms-green/20 flex items-center justify-center overflow-hidden">
-                        <img src="./logo.jpeg" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
-                    </div>
-                    <h2 class="font-extrabold text-lg text-rms-green">Selamat Datang</h2>
-                    <p class="text-xs text-slate-500 font-medium mt-1">Sistem Administrasi & Keuangan Terpadu</p>
-                </div>
-
-                <div class="flex bg-slate-100 p-1.5 rounded-2xl mb-6 border border-slate-200/60">
-                    <button onclick="switchLoginTab('admin')" id="tab-btn-admin"
-                        class="flex-1 py-2.5 text-xs font-bold rounded-xl bg-rms-green text-white shadow-sm transition">
-                        <i class="fa-solid fa-user-shield mr-1"></i> Pengurus
-                    </button>
-                    <button onclick="switchLoginTab('member')" id="tab-btn-member"
-                        class="flex-1 py-2.5 text-xs font-bold rounded-xl text-slate-600 transition">
-                        <i class="fa-solid fa-user mr-1"></i> Anggota
-                    </button>
-                </div>
-
-                <form id="form-login-admin" onsubmit="handleLoginAdmin(event)" class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-700 mb-1.5">Email Pengurus</label>
-                        <input type="email" id="admin-email" required placeholder="email@contoh.com"
-                            class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-rms-green focus:border-transparent outline-none bg-slate-50/50 transition">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-700 mb-1.5">Kata Sandi</label>
-                        <input type="password" id="admin-pass" required placeholder="••••••••"
-                            class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-rms-green focus:border-transparent outline-none bg-slate-50/50 transition">
-                    </div>
-                    <button type="submit"
-                        class="w-full bg-gradient-to-r from-rms-green to-rms-lightgreen hover:opacity-95 text-white font-bold py-3 rounded-xl text-sm transition shadow-md shadow-emerald-900/20 active:scale-[0.98]">
-                        Masuk Pengurus
-                    </button>
-                </form>
-
-                <form id="form-login-member" onsubmit="handleLoginMember(event)" class="space-y-4 hidden">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-700 mb-1.5">NIK (16 Digit)</label>
-                        <input type="text" id="member-nik" required maxlength="16" inputmode="numeric" placeholder="Masukkan NIK terdaftar"
-                            class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-rms-amber focus:border-transparent outline-none bg-slate-50/50 transition">
-                    </div>
-                    <button type="submit"
-                        class="w-full bg-gradient-to-r from-rms-amber to-amber-600 hover:opacity-95 text-white font-bold py-3 rounded-xl text-sm transition shadow-md shadow-amber-900/20 active:scale-[0.98]">
-                        Masuk Anggota
-                    </button>
-                </form>
-            </div>
-        </section>
-
-        <section id="view-admin-dashboard" class="hidden space-y-5">
-            <div class="grid grid-cols-3 gap-2 bg-white p-2 rounded-2xl border border-amber-100/70 shadow-card">
-                <button onclick="switchAdminTab('members')" id="admin-tab-members" class="admin-tab active">
-                    <i class="fa-solid fa-users"></i><span>Anggota</span>
+                <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl shadow-lg transition mt-2 flex justify-center items-center gap-2">
+                    Masuk Anggota <i class="fa-solid fa-arrow-right"></i>
                 </button>
-                <button onclick="switchAdminTab('finance')" id="admin-tab-finance" class="admin-tab">
-                    <i class="fa-solid fa-wallet"></i><span>Keuangan</span>
-                </button>
-                <button onclick="switchAdminTab('admins')" id="admin-tab-admins" class="admin-tab">
-                    <i class="fa-solid fa-user-shield"></i><span>Admin</span>
-                </button>
-            </div>
-
-            <div id="content-admin-members" class="space-y-4">
-                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
-                    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                        <h3 id="form-member-title" class="font-extrabold text-sm sm:text-base text-rms-green">
-                            <i class="fa-solid fa-user-plus mr-1"></i> Pendaftaran Anggota Baru
-                        </h3>
-                        <span class="text-[10px] text-rms-amber bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/60 font-semibold">
-                            <i class="fa-solid fa-camera mr-1"></i>Scan KTP
-                        </span>
-                    </div>
-
-                    <div id="scan-container" class="mb-4 p-3 bg-amber-50/40 border border-dashed border-amber-300/80 rounded-2xl">
-                        <label class="block text-xs font-semibold text-slate-700 mb-1.5">
-                            <i class="fa-solid fa-wand-magic-sparkles text-rms-amber mr-1"></i>
-                            Pindai Foto KTP (Isi Otomatis)
-                        </label>
-                        <input type="file" accept="image/*" id="scan-doc-input" onchange="processDocumentScan(event)"
-                            class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-rms-green file:text-white cursor-pointer">
-                        <p id="scan-status" class="text-xs text-amber-700 mt-1.5 hidden">
-                            <i class="fa-solid fa-spinner fa-spin mr-1"></i> Membaca data dari foto…
-                        </p>
-                    </div>
-
-                    <form id="form-member-input" onsubmit="handleAddMember(event)" class="space-y-3">
-                        <input type="hidden" id="edit-member-id" value="">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label class="form-label">Nama Lengkap (Sesuai KTP)</label>
-                                <input type="text" id="add-name" required placeholder="Nama lengkap" class="form-input">
-                            </div>
-                            <div>
-                                <label class="form-label">NIK (16 Digit)</label>
-                                <input type="text" id="add-nik" required maxlength="16" inputmode="numeric" placeholder="16 digit NIK" class="form-input">
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div>
-                                <label class="form-label">Jabatan / Peran</label>
-                                <select id="add-role" onchange="handleRoleChange()" class="form-input bg-white">
-                                    <option value="Anggota">Anggota Tani</option>
-                                    <option value="Loper">Loper / PJ Wilayah</option>
-                                    <option value="Ketua">Ketua Kelompok Tani</option>
-                                    <option value="Sekretaris">Sekretaris</option>
-                                    <option value="Bendahara">Bendahara</option>
-                                    <option value="Dewan Pendiri">Dewan Pendiri</option>
-                                    <option value="Dewan Pengawas">Dewan Pengawas</option>
-                                    <option value="Seksi">Seksi (Bidang Khusus)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="form-label">Telepon / WhatsApp</label>
-                                <input type="tel" id="add-phone" placeholder="08xxxxxxxxxx" class="form-input">
-                            </div>
-                            <div>
-                                <label class="form-label">Wilayah / Loper</label>
-                                <input type="text" id="add-loper-location" placeholder="Contoh: Indragiri" class="form-input">
-                            </div>
-                        </div>
-                        <div id="seksi-field-container" class="hidden">
-                            <label class="form-label">Nama Bidang Seksi</label>
-                            <input type="text" id="add-seksi-name" placeholder="Contoh: Seksi Pengairan" class="form-input">
-                        </div>
-                        <div class="flex space-x-2 pt-1">
-                            <button type="submit" id="btn-save-member"
-                                class="flex-1 bg-rms-green hover:bg-rms-lightgreen text-white font-bold py-2.5 rounded-xl text-sm transition shadow">
-                                Simpan Anggota
-                            </button>
-                            <button type="button" id="btn-cancel-edit-member" onclick="cancelEditMember()"
-                                class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-4 py-2.5 rounded-xl text-sm transition">
-                                Batal
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
-                    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                        <h3 class="font-extrabold text-sm sm:text-base text-slate-800">
-                            <i class="fa-solid fa-address-book text-rms-green mr-1"></i> Daftar Anggota
-                        </h3>
-                        <button onclick="exportMemberReport()"
-                            class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 rounded-xl font-bold transition shadow flex items-center space-x-1.5">
-                            <i class="fa-solid fa-file-pdf"></i><span>Cetak</span>
-                        </button>
-                    </div>
-                    <div id="members-list-container" class="space-y-2"></div>
-                </div>
-            </div>
-
-            <div id="content-admin-finance" class="space-y-4 hidden">
-                <div class="grid grid-cols-3 gap-2 sm:gap-3">
-                    <div class="stat-card bg-emerald-50 border-emerald-100">
-                        <i class="fa-solid fa-arrow-down text-emerald-600"></i>
-                        <span class="stat-label text-emerald-700">Total Masuk</span>
-                        <span id="summary-income" class="stat-value text-emerald-800">Rp 0</span>
-                    </div>
-                    <div class="stat-card bg-rose-50 border-rose-100">
-                        <i class="fa-solid fa-arrow-up text-rose-600"></i>
-                        <span class="stat-label text-rose-700">Total Keluar</span>
-                        <span id="summary-expense" class="stat-value text-rose-800">Rp 0</span>
-                    </div>
-                    <div class="stat-card bg-rms-green border-rms-darkgreen !text-white">
-                        <i class="fa-solid fa-wallet text-amber-300"></i>
-                        <span class="stat-label text-amber-200">Saldo Kas</span>
-                        <span id="summary-balance" class="stat-value text-amber-300">Rp 0</span>
-                    </div>
-                </div>
-
-                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
-                    <h3 class="font-extrabold text-sm sm:text-base text-slate-800 mb-3">
-                        <i class="fa-solid fa-pen-to-square text-rms-green mr-1"></i> Catat Kas
-                    </h3>
-                    <form onsubmit="handleTransaction(event)" class="space-y-3">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label class="form-label">Jenis Transaksi</label>
-                                <select id="trx-type" class="form-input bg-white">
-                                    <option value="Masuk">Kas Masuk</option>
-                                    <option value="Keluar">Kas Keluar</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="form-label">Jumlah (Rp)</label>
-                                <input type="number" id="trx-amount" required min="1" placeholder="100000" class="form-input">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="form-label">Keterangan</label>
-                            <input type="text" id="trx-desc" required placeholder="Misal: Iuran bulanan" class="form-input">
-                        </div>
-                        <div>
-                            <label class="form-label">Bukti Nota / Kwitansi</label>
-                            <input type="file" accept="image/*" id="trx-proof"
-                                class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-100 file:text-amber-800 cursor-pointer">
-                        </div>
-                        <button type="submit"
-                            class="w-full bg-rms-green hover:bg-rms-lightgreen text-white font-bold py-3 rounded-xl text-sm transition shadow">
-                            Simpan Catatan Kas
-                        </button>
-                    </form>
-                </div>
-
-                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
-                    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                        <h3 class="font-extrabold text-sm sm:text-base text-slate-800">
-                            <i class="fa-solid fa-clock-rotate-left text-rms-green mr-1"></i> Riwayat Kas
-                        </h3>
-                        <button onclick="exportFinanceReport()"
-                            class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 rounded-xl font-bold transition shadow flex items-center space-x-1.5">
-                            <i class="fa-solid fa-file-invoice-dollar"></i><span>Cetak</span>
-                        </button>
-                    </div>
-                    <div id="finance-list-container" class="space-y-2"></div>
-                </div>
-            </div>
-
-            <div id="content-admin-admins" class="space-y-4 hidden">
-                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
-                    <h3 class="font-extrabold text-sm sm:text-base text-slate-800 mb-1">
-                        <i class="fa-solid fa-user-plus text-rms-green mr-1"></i> Tambah Pengurus Baru
-                    </h3>
-                    <p class="text-[11px] text-amber-700 mb-4">
-                        <i class="fa-solid fa-shield-halved mr-1"></i> Memerlukan verifikasi OTP ke email pemilik utama.
-                    </p>
-                    <form onsubmit="initiateAddAdmin(event)" class="space-y-3">
-                        <div>
-                            <label class="form-label">Nama Pengurus</label>
-                            <input type="text" id="add-admin-name" required placeholder="Nama lengkap" class="form-input">
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label class="form-label">Email Login</label>
-                                <input type="email" id="add-admin-email" required placeholder="admin@rms.com" class="form-input">
-                            </div>
-                            <div>
-                                <label class="form-label">Kata Sandi</label>
-                                <input type="password" id="add-admin-pass" required placeholder="••••••••" class="form-input">
-                            </div>
-                        </div>
-                        <button type="submit"
-                            class="w-full bg-rms-green hover:bg-rms-lightgreen text-white font-bold py-3 rounded-xl text-sm transition shadow">
-                            Kirim OTP Persetujuan
-                        </button>
-                    </form>
-                </div>
-
-                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
-                    <h3 class="font-extrabold text-sm sm:text-base text-slate-800 mb-4">
-                        <i class="fa-solid fa-users-gear text-rms-green mr-1"></i> Daftar Admin Utama
-                    </h3>
-                    <div id="admins-list-container" class="space-y-2"></div>
-                </div>
-            </div>
-        </section>
-
-        <section id="view-member-dashboard" class="hidden space-y-5">
-            <div class="bg-gradient-to-br from-rms-green via-rms-darkgreen to-rms-green p-5 sm:p-7 rounded-3xl shadow-xl text-white relative overflow-hidden border border-amber-300/30">
-                <div class="absolute -top-16 -right-16 w-48 h-48 bg-amber-400/10 rounded-full blur-2xl"></div>
-                <div class="absolute -bottom-16 -left-16 w-48 h-48 bg-emerald-400/10 rounded-full blur-2xl"></div>
-
-                <div class="relative flex items-center justify-between border-b border-white/20 pb-3.5 mb-4">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-11 h-11 bg-white rounded-full p-0.5 ring-1 ring-amber-300 flex items-center justify-center shrink-0 shadow overflow-hidden">
-                            <img src="./logo.jpeg" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
-                        </div>
-                        <div>
-                            <p class="font-extrabold text-[10px] tracking-wider text-amber-300">KELOMPOK TANI</p>
-                            <h2 class="font-black text-xs sm:text-sm tracking-wide text-white">RIAU MANDIRI SEJAHTERA</h2>
-                        </div>
-                    </div>
-                    <span class="text-[10px] bg-amber-400 text-emerald-950 font-black px-2.5 py-1 rounded-full shadow">E-CARD</span>
-                </div>
-
-                <div class="relative space-y-2 text-xs mb-5">
-                    <div class="flex justify-between items-center gap-2">
-                        <span class="text-emerald-200">Nama</span>
-                        <span id="member-card-name" class="font-extrabold text-sm text-amber-200 text-right">-</span>
-                    </div>
-                    <div class="flex justify-between items-center gap-2">
-                        <span class="text-emerald-200">Jabatan</span>
-                        <span id="member-card-role" class="font-bold text-white bg-white/10 px-2 py-0.5 rounded-md text-right">-</span>
-                    </div>
-                    <div class="flex justify-between items-center gap-2">
-                        <span class="text-emerald-200">No. Anggota</span>
-                        <span id="member-card-no" class="font-mono font-bold text-amber-300">-</span>
-                    </div>
-                    <div class="flex justify-between items-center gap-2">
-                        <span class="text-emerald-200">Wilayah</span>
-                        <span id="member-card-loper" class="font-medium text-white text-right">-</span>
-                    </div>
-                </div>
-
-                <div class="relative bg-white/95 backdrop-blur rounded-2xl p-4 text-center text-slate-800 shadow-inner">
-                    <p class="text-[11px] font-extrabold text-rms-green mb-2 uppercase tracking-wider">
-                        <i class="fa-solid fa-qrcode mr-1 text-rms-amber"></i> QR Identitas Anggota
-                    </p>
-                    <div id="qrcode-container" class="flex justify-center p-2 bg-white rounded-xl border border-slate-200 inline-block mx-auto mb-1"></div>
-                    <p class="text-[10px] text-slate-500 font-medium">Tunjukkan QR ini untuk verifikasi.</p>
-                </div>
-            </div>
-
-            <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
-                <h3 class="font-extrabold text-sm sm:text-base text-slate-800 mb-3">
-                    <i class="fa-solid fa-chart-pie text-rms-green mr-1"></i> Laporan Kas Kelompok
-                </h3>
-                <div class="grid grid-cols-3 gap-2">
-                    <div class="stat-card bg-emerald-50 border-emerald-100">
-                        <span class="stat-label text-emerald-700">Masuk</span>
-                        <span id="member-summary-income" class="stat-value text-emerald-800">Rp 0</span>
-                    </div>
-                    <div class="stat-card bg-rose-50 border-rose-100">
-                        <span class="stat-label text-rose-700">Keluar</span>
-                        <span id="member-summary-expense" class="stat-value text-rose-800">Rp 0</span>
-                    </div>
-                    <div class="stat-card bg-rms-green border-rms-darkgreen !text-white">
-                        <span class="stat-label text-amber-200">Saldo</span>
-                        <span id="member-summary-balance" class="stat-value text-amber-300">Rp 0</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
-                <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-                    <h3 class="font-extrabold text-sm sm:text-base text-slate-800">
-                        <i class="fa-solid fa-users text-rms-green mr-1"></i> Anggota Terdaftar
-                    </h3>
-                    <span id="member-total-count"
-                        class="text-xs font-bold bg-amber-100 text-amber-900 px-2.5 py-1 rounded-full border border-amber-200">
-                        Total: 0
-                    </span>
-                </div>
-                <div id="member-view-members-list" class="space-y-2 max-h-72 overflow-y-auto pr-1"></div>
-            </div>
-        </section>
-    </main>
-
-    <div id="print-area" class="hidden p-8 bg-white text-slate-900"></div>
-
-    <footer class="bg-white border-t border-amber-100 py-4 text-center text-xs text-slate-400 mt-auto print:hidden">
-        &copy; 2026 Kelompok Tani Riau Mandiri Sejahtera (RMS). All rights reserved.
-    </footer>
-
-    <div id="otp-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4 print:hidden backdrop-blur-sm">
-        <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center relative shadow-2xl border border-amber-100">
-            <div class="w-14 h-14 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
-                <i class="fa-solid fa-envelope-circle-check"></i>
-            </div>
-            <h3 class="font-extrabold text-base text-slate-900 mb-1">Verifikasi OTP</h3>
-            <p class="text-xs text-slate-500 mb-4 leading-relaxed">
-                Kode 6-digit dikirim ke pemilik utama:<br>
-                <b class="text-slate-800 text-[11px]">arniusputra6895@gmail.com</b>
-            </p>
-            <input type="text" id="otp-input-code" maxlength="6" inputmode="numeric" placeholder="000000"
-                class="w-full text-center tracking-[0.5em] text-xl font-extrabold border-2 border-rms-green rounded-xl py-3 px-3 mb-4 outline-none focus:ring-2 focus:ring-rms-lightgreen">
-            <div class="flex space-x-2">
-                <button onclick="closeOtpModal()"
-                    class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-xs transition">
-                    Batal
-                </button>
-                <button onclick="confirmOtpSubmission()"
-                    class="flex-1 bg-rms-green hover:bg-rms-lightgreen text-white font-bold py-2.5 rounded-xl text-xs transition shadow">
-                    Verifikasi
-                </button>
-            </div>
+            </form>
         </div>
     </div>
 
-    <div id="toast-container" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] space-y-2 print:hidden"></div>
+    <!-- ================= HALAMAN 2: DASBOR ================= -->
+    <div id="halaman-dasbor" class="hidden max-w-4xl mx-auto">
+        <!-- Header -->
+        <header class="bg-green-900 text-white sticky top-0 z-50 shadow-md rounded-b-2xl mb-6">
+            <div class="px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white rounded-full p-0.5 shadow-md border border-amber-400 flex items-center justify-center overflow-hidden">
+                        <img src="./logo.jpg" alt="Logo" class="w-full h-full object-cover rounded-full">
+                    </div>
+                    <div>
+                        <h1 class="text-[10px] font-bold text-amber-400 tracking-widest leading-tight">KELOMPOK TANI</h1>
+                        <h2 class="text-sm font-extrabold leading-tight">Riau Mandiri Sejahtera</h2>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span id="nav-user" class="text-xs font-semibold bg-green-800 px-3 py-1.5 rounded-lg border border-green-700">Halo, User</span>
+                    <button onclick="logout()" class="bg-rose-600 hover:bg-rose-700 text-white w-8 h-8 rounded-lg flex items-center justify-center transition"><i class="fa-solid fa-power-off text-xs"></i></button>
+                </div>
+            </div>
+        </header>
+
+        <main class="px-4 space-y-6">
+            
+            <!-- ================= TAMPILAN ADMIN ================= -->
+            <div id="view-admin" class="hidden space-y-6">
+                <div class="flex bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200">
+                    <button onclick="switchAdminTab('members')" id="btn-tab-members" class="flex-1 py-2.5 bg-green-800 text-white font-bold text-xs rounded-xl shadow flex items-center justify-center gap-2 transition"><i class="fa-solid fa-users text-amber-400"></i> Data Anggota</button>
+                    <button onclick="switchAdminTab('finance')" id="btn-tab-finance" class="flex-1 py-2.5 text-slate-500 font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition"><i class="fa-solid fa-wallet"></i> Keuangan Kas</button>
+                </div>
+
+                <!-- Tab Anggota -->
+                <div id="tab-members" class="space-y-6">
+                    <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+                        <div class="flex items-center justify-between mb-5 border-b border-slate-100 pb-3">
+                            <h3 id="form-title" class="font-extrabold text-sm text-green-900"><i class="fa-solid fa-user-plus text-amber-500 mr-2"></i>Pendaftaran Anggota</h3>
+                            <span class="text-[10px] font-bold bg-amber-100 text-amber-800 px-3 py-1.5 rounded-lg border border-amber-200"><i class="fa-solid fa-camera mr-1"></i> Scan KTP Otomatis</span>
+                        </div>
+                        
+                        <!-- Box Scan KTP -->
+                        <div class="border-2 border-dashed border-green-200 bg-green-50/50 rounded-2xl p-4 text-center mb-5 relative">
+                            <input type="file" id="scan-ktp" accept="image/*" onchange="prosesScanKTP(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                            <i class="fa-solid fa-cloud-arrow-up text-2xl text-green-600 mb-2"></i>
+                            <p class="text-xs font-semibold text-slate-600">Klik/Upload Foto KTP (Isi Otomatis)</p>
+                            <p id="scan-status" class="text-[10px] text-amber-600 font-bold mt-2 hidden"><i class="fa-solid fa-spinner fa-spin"></i> Membaca KTP...</p>
+                        </div>
+
+                        <form id="form-member" onsubmit="simpanAnggota(event)" class="space-y-4">
+                            <input type="hidden" id="edit-id">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1.5">Nama Lengkap (Sesuai KTP)</label>
+                                    <input type="text" id="input-nama" required placeholder="Nama" class="w-full px-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-green-600 transition">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1.5">NIK (16 Digit)</label>
+                                    <input type="text" id="input-nik" required maxlength="16" placeholder="1404xxxxxxxxxxxx" class="w-full px-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-green-600 transition">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1.5">Jabatan / Peran</label>
+                                    <select id="input-jabatan" class="w-full px-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-green-600 transition">
+                                        <option value="Anggota Tani">Anggota Tani</option>
+                                        <option value="Loper / PJ Wilayah">Loper / PJ Wilayah</option>
+                                        <option value="Ketua Kelompok Tani">Ketua Kelompok Tani</option>
+                                        <option value="Sekretaris">Sekretaris</option>
+                                        <option value="Bendahara">Bendahara</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1.5">No WhatsApp</label>
+                                    <input type="text" id="input-hp" placeholder="08xxxxxxxxxx" class="w-full px-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-green-600 transition">
+                                </div>
+                            </div>
+                            <div class="flex gap-2 mt-4">
+                                <button type="submit" class="flex-1 bg-green-800 hover:bg-green-700 text-white font-bold text-xs py-3 rounded-xl shadow transition">Simpan Data</button>
+                                <button type="button" onclick="resetFormAnggota()" id="btn-cancel" class="hidden bg-slate-200 text-slate-700 font-bold text-xs px-4 py-3 rounded-xl transition">Batal</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+                        <h3 class="font-extrabold text-sm text-green-900 mb-4">Daftar Anggota Terdaftar</h3>
+                        <div id="list-anggota" class="space-y-2"></div>
+                    </div>
+                </div>
+
+                <!-- Tab Keuangan -->
+                <div id="tab-finance" class="hidden space-y-6">
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm text-center">
+                            <p class="text-[10px] font-bold text-slate-500 mb-1">Masuk</p>
+                            <p id="total-masuk" class="text-sm font-extrabold text-green-700">Rp 0</p>
+                        </div>
+                        <div class="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm text-center">
+                            <p class="text-[10px] font-bold text-slate-500 mb-1">Keluar</p>
+                            <p id="total-keluar" class="text-sm font-extrabold text-rose-600">Rp 0</p>
+                        </div>
+                        <div class="bg-green-900 p-4 rounded-2xl shadow-md text-center border border-green-800">
+                            <p class="text-[10px] font-bold text-amber-400 mb-1">Saldo Kas</p>
+                            <p id="saldo-kas" class="text-sm font-extrabold text-white">Rp 0</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+                        <h3 class="font-extrabold text-sm text-green-900 mb-4">Catat Transaksi Kas</h3>
+                        <form onsubmit="simpanKas(event)" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1.5">Jenis</label>
+                                    <select id="kas-jenis" class="w-full px-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                                        <option value="Masuk">Kas Masuk</option>
+                                        <option value="Keluar">Kas Keluar</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-600 mb-1.5">Jumlah (Rp)</label>
+                                    <input type="number" id="kas-jumlah" required min="1" placeholder="100000" class="w-full px-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 mb-1.5">Keterangan</label>
+                                <input type="text" id="kas-ket" required placeholder="Misal: Iuran Bulanan" class="w-full px-4 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                            </div>
+                            <button type="submit" class="w-full bg-green-800 text-white font-bold text-xs py-3 rounded-xl shadow transition">Simpan Transaksi</button>
+                        </form>
+                    </div>
+
+                    <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
+                        <h3 class="font-extrabold text-sm text-green-900 mb-4">Riwayat Kas</h3>
+                        <div id="list-kas" class="space-y-2"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= TAMPILAN ANGGOTA ================= -->
+            <div id="view-member" class="hidden space-y-6">
+                <!-- Kartu Anggota Digital -->
+                <div class="bg-gradient-to-br from-green-900 to-green-700 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+                    <div class="absolute -right-10 -top-10 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl"></div>
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <p class="text-[10px] font-bold text-amber-400 tracking-widest mb-1">KARTU ANGGOTA DIGITAL</p>
+                            <h2 id="member-nama" class="text-xl font-extrabold">Nama</h2>
+                            <p id="member-jabatan" class="text-xs text-green-200 mt-1">Jabatan</p>
+                        </div>
+                        <div id="qrcode" class="bg-white p-1 rounded-md"></div>
+                    </div>
+                    <div class="flex justify-between items-end">
+                        <div>
+                            <p class="text-[10px] text-green-300">Nomor Anggota</p>
+                            <p id="member-no" class="font-mono text-sm font-bold text-amber-400">RMS-000</p>
+                        </div>
+                        <div class="bg-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] font-bold border border-white/20">Status: Aktif</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
 
     <script src="script.js"></script>
 </body>
-</html>
+                            </html>
