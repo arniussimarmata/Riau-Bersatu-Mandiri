@@ -43,7 +43,6 @@ function toast(msg, type = 'success') {
 }
 
 window.onload = async function () {
-    // 1. Cek parameter NIK dari URL terlebih dahulu SEBELUM sinkronisasi cloud
     const urlParams = new URLSearchParams(window.location.search);
     const scanNik = urlParams.get('nik');
 
@@ -55,7 +54,6 @@ window.onload = async function () {
             currentUser = { role: 'member', ...foundMember };
             localStorage.setItem('rms_current_user', JSON.stringify(currentUser));
             toast(`Login otomatis berhasil: ${foundMember.name}`);
-            // Bersihkan parameter NIK dari URL browser agar bersih
             window.history.replaceState({}, document.title, window.location.pathname);
         } else {
             toast('NIK dari QR Code tidak terdaftar dalam sistem', 'error');
@@ -480,15 +478,16 @@ function renderMemberCard() {
     const qrContainer = document.getElementById('qrcode-container');
     qrContainer.innerHTML = '';
 
-    // Memastikan link mutlak terbentuk dengan domain Netlify asli Anda
-    const targetUrl = `https://Riau-Bersatu-Mandiri.netlify.app/?nik=${encodeURIComponent(currentUser.nik)}`;
+    // Menggunakan API QR Server eksternal agar QR yang dihasilkan berupa gambar URL murni yang langsung dikenali Google Lens
+    const currentDomain = window.location.origin;
+    const targetUrl = `${currentDomain}/?nik=${encodeURIComponent(currentUser.nik)}`;
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(targetUrl)}`;
 
-    new QRCode(qrContainer, {
-        text: targetUrl,
-        width: 130, 
-        height: 130,
-        correctLevel: QRCode.CorrectLevel.H
-    });
+    const img = document.createElement('img');
+    img.src = qrApiUrl;
+    img.alt = "QR Code Anggota";
+    img.className = "mx-auto rounded-lg shadow-sm";
+    qrContainer.appendChild(img);
 }
 
 function renderMemberFinanceView() {
