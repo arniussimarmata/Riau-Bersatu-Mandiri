@@ -68,13 +68,15 @@ function cancelEditMember() {
 window.addEventListener('DOMContentLoaded', boot);
 
 async function boot() {
+    // Cek QR token di URL
     const params = new URLSearchParams(location.search);
     const qrToken = params.get('t');
     if (qrToken) {
-        history.replaceState({}, '', location.pathname);
+        history.replaceState({}, '', location.pathname); // Bersihkan URL
         await loginWithQrToken(qrToken);
     }
 
+    // Cek session yang tersimpan
     const { data: { session } } = await supabase.auth.getSession();
     if (session && !currentUser) {
         currentUser = session.user;
@@ -225,8 +227,6 @@ async function handleAddMember(e) {
 
         const { count } = await supabase.from('members').select('*', { count: 'exact', head: true });
         const nextNo = 'RMS-' + String((count || 0) + 1).padStart(3, '0');
-        
-        // Generate Kunci Rahasia Permanen
         const qrSecret = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
 
         const { error } = await supabase.from('members').insert({
@@ -309,10 +309,7 @@ function renderMemberCard() {
     const qrContainer = document.getElementById('qrcode-container');
     if (qrContainer && currentMember.qr_secret) {
         qrContainer.innerHTML = '';
-        // PERBAIKAN: Paksa pakai https:// agar dikenali sebagai link website oleh HP
-        const baseUrl = location.protocol === 'file:' ? 'https://rms-tani-app.vercel.app' : location.origin; 
-        const url = `${baseUrl}${location.pathname}?t=${currentMember.qr_secret}`;
-        
+        const url = `${location.origin}${location.pathname}?t=${currentMember.qr_secret}`;
         new QRCode(qrContainer, { text: url, width: 130, height: 130 });
         document.getElementById('qr-countdown').innerText = 'QR Permanen (Kartu Anggota)';
     }
@@ -389,9 +386,7 @@ function renderCardsHTML(members) {
     members.forEach(m => {
         const el = document.getElementById(`qr-print-${m.id}`);
         if (el) {
-            // PERBAIKAN: Paksa pakai https:// agar dikenali sebagai link website
-            const baseUrl = location.protocol === 'file:' ? 'https://rms-tani-app.vercel.app' : location.origin;
-            const url = `${baseUrl}${location.pathname}?t=${m.qr_secret}`;
+            const url = `${location.origin}${location.pathname}?t=${m.qr_secret}`;
             new QRCode(el, { text: url, width: 70, height: 70 });
         }
     });
