@@ -43,7 +43,7 @@ function toast(msg, type = 'success') {
 }
 
 window.onload = async function () {
-    // Membaca parameter NIK langsung dari URL saat QR Code dipindai
+    // 1. Membaca parameter NIK dari URL hasil pindaian QR Code
     const urlParams = new URLSearchParams(window.location.search);
     const scanNik = urlParams.get('nik');
 
@@ -479,15 +479,14 @@ function renderMemberCard() {
     const qrContainer = document.getElementById('qrcode-container');
     qrContainer.innerHTML = '';
 
-    // Menghasilkan Gambar QR URL Murni yang langsung dikenali Kamera HP / Google Lens sebagai Tautan Web
-    const currentDomain = window.location.origin;
-    const targetUrl = `${currentDomain}/?nik=${encodeURIComponent(currentUser.nik)}`;
-    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(targetUrl)}`;
+    // MENGGUNAKAN DOMAIN NETLIFY ASLI ANDA
+    const targetUrl = `https://amazing-capybara-c4a807.netlify.app/?nik=${encodeURIComponent(currentUser.nik)}`;
+    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(targetUrl)}`;
 
     const img = document.createElement('img');
     img.src = qrApiUrl;
     img.alt = "QR Code Anggota";
-    img.className = "mx-auto rounded-lg shadow-sm";
+    img.className = "mx-auto rounded-lg shadow-sm w-32 h-32";
     qrContainer.appendChild(img);
 }
 
