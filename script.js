@@ -30,6 +30,7 @@ function fmtRp(n) {
 
 function toast(msg, type = 'success') {
     const c = document.getElementById('toast-container');
+    if (!c) return;
     const t = document.createElement('div');
     t.className = 'toast' + (type !== 'success' ? ' ' + type : '');
     const icon = type === 'error' ? 'fa-circle-xmark' : type === 'warn' ? 'fa-triangle-exclamation' : 'fa-circle-check';
@@ -42,21 +43,22 @@ function toast(msg, type = 'success') {
 }
 
 window.onload = async function () {
-    await syncCloudData();
-    
-    // Auto-login saat URL dibuka dari hasil scan QR Code
+    // 1. Cek parameter NIK dari URL terlebih dahulu SEBELUM sinkronisasi cloud
     const urlParams = new URLSearchParams(window.location.search);
     const scanNik = urlParams.get('nik');
-    
+
+    await syncCloudData();
+
     if (scanNik) {
         const foundMember = dbMembers.find(m => m.nik === scanNik);
         if (foundMember) {
             currentUser = { role: 'member', ...foundMember };
             localStorage.setItem('rms_current_user', JSON.stringify(currentUser));
             toast(`Login otomatis berhasil: ${foundMember.name}`);
+            // Bersihkan parameter NIK dari URL browser agar bersih
             window.history.replaceState({}, document.title, window.location.pathname);
         } else {
-            toast('NIK dari QR Code tidak terdaftar', 'error');
+            toast('NIK dari QR Code tidak terdaftar dalam sistem', 'error');
         }
     }
 
@@ -65,11 +67,14 @@ window.onload = async function () {
 };
 
 function updateSyncBadge(text, ok) {
-    document.getElementById('sync-text').innerText = text;
+    const textEl = document.getElementById('sync-text');
+    if (textEl) textEl.innerText = text;
     const b = document.getElementById('sync-badge');
-    b.className = ok
-        ? "bg-emerald-950/50 hover:bg-emerald-950/60 border border-amber-300/40 text-amber-200 text-[10px] sm:text-xs px-2.5 py-1.5 rounded-full font-semibold shadow backdrop-blur-sm transition active:scale-95 whitespace-nowrap"
-        : "bg-amber-900/50 hover:bg-amber-900/60 border border-amber-400/40 text-amber-100 text-[10px] sm:text-xs px-2.5 py-1.5 rounded-full font-semibold shadow backdrop-blur-sm transition active:scale-95 whitespace-nowrap";
+    if (b) {
+        b.className = ok
+            ? "bg-emerald-950/50 hover:bg-emerald-950/60 border border-amber-300/40 text-amber-200 text-[10px] sm:text-xs px-2.5 py-1.5 rounded-full font-semibold shadow backdrop-blur-sm transition active:scale-95 whitespace-nowrap"
+            : "bg-amber-900/50 hover:bg-amber-900/60 border border-amber-400/40 text-amber-100 text-[10px] sm:text-xs px-2.5 py-1.5 rounded-full font-semibold shadow backdrop-blur-sm transition active:scale-95 whitespace-nowrap";
+    }
 }
 
 async function syncCloudData() {
@@ -106,7 +111,6 @@ async function pushAllToCloud() {
         ]);
     } catch (err) {
         console.error('Push error:', err);
-        toast('Gagal simpan ke cloud', 'error');
     }
 }
 
@@ -476,13 +480,11 @@ function renderMemberCard() {
     const qrContainer = document.getElementById('qrcode-container');
     qrContainer.innerHTML = '';
 
-    // Menyusun URL persis dan lengkap dengan awalan https://
-    const host = window.location.host;
-    const path = window.location.pathname;
-    const fullUrl = `https://${host}${path}?nik=${encodeURIComponent(currentUser.nik)}`;
+    // Memastikan link mutlak terbentuk dengan domain Netlify asli Anda
+    const targetUrl = `https://Riau-Bersatu-Mandiri.netlify.app/?nik=${encodeURIComponent(currentUser.nik)}`;
 
     new QRCode(qrContainer, {
-        text: fullUrl,
+        text: targetUrl,
         width: 130, 
         height: 130,
         correctLevel: QRCode.CorrectLevel.H
@@ -549,7 +551,7 @@ function exportFinanceReport() {
                 <tr class="total-row"><td colspan="3">Saldo Akhir</td><td style="text-align:right">${fmtRp(balance)}</td></tr>
             </tfoot>
         </table>`;
-    area.classList.remove('hidden');
+    area.classList.add('hidden');
     window.print();
     setTimeout(() => { area.classList.add('hidden'); area.innerHTML = ''; }, 1000);
 }
