@@ -6,7 +6,6 @@ let currentUser = null;
 let currentMember = null;
 let currentProfile = null;
 let realtimeChannel = null;
-let qrTimer = null;
 
 // ========== HELPERS ==========
 function esc(s) {
@@ -73,7 +72,7 @@ async function boot() {
     const params = new URLSearchParams(location.search);
     const qrToken = params.get('t');
     if (qrToken) {
-        history.replaceState({}, '', location.pathname);
+        history.replaceState({}, '', location.pathname); // Bersihkan URL
         await loginWithQrToken(qrToken);
     }
 
@@ -106,7 +105,7 @@ async function loginWithQrToken(token) {
         toast(`Selamat datang, ${currentMember?.name ?? ''}`);
     } catch (e) {
         console.error(e);
-        toast(e.message || 'QR tidak valid / kadaluarsa', 'error');
+        toast(e.message || 'QR tidak valid', 'error');
     }
 }
 
@@ -228,15 +227,17 @@ async function handleAddMember(e) {
 
         const { count } = await supabase.from('members').select('*', { count: 'exact', head: true });
         const nextNo = 'RMS-' + String((count || 0) + 1).padStart(3, '0');
+        const qrSecret = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
 
         const { error } = await supabase.from('members').insert({
             user_id: signUp.user.id,
             no_anggota: nextNo, name, nik, role: finalRole, phone, loper,
+            qr_secret: qrSecret
         });
         if (error) return toast(error.message, 'error');
 
         await supabase.from('profiles').upsert({ user_id: signUp.user.id, role: 'member' });
-        toast(`Anggota ${nextNo} ditambahkan. Password sementara: ${tempPass}`, 'warn');
+        toast(`Anggota ${nextNo} ditambahkan. Password: ${tempPass}`, 'warn');
     }
 
     cancelEditMember();
@@ -289,7 +290,7 @@ function renderMembersList(members) {
                 <p class="text-[11px] text-slate-500 font-medium truncate">${esc(m.role)} · NIK: ${esc(m.nik)} · ${esc(m.loper || '-')}</p>
             </div>
             <div class="flex items-center space-x-1 shrink-0">
-                <button onclick="generateMemberQr('${m.id}')" class="text-rms-green text-xs px-2 py-1.5 font-bold hover:bg-emerald-50 rounded-lg transition" title="Buat QR"><i class="fa-solid fa-qrcode"></i></button>
+                <button onclick="printSingleCard('${m.id}')" class="text-rms-green text-xs px-2 py-1.5 font-bold hover:bg-emerald-50 rounded-lg transition" title="Cetak Kartu"><i class="fa-solid fa-id-card"></i></button>
                 <button onclick="editMember('${m.id}')" class="text-amber-700 text-xs px-2 py-1.5 font-bold hover:bg-amber-100 rounded-lg transition"><i class="fa-solid fa-pen"></i></button>
                 <button onclick="deleteMember('${m.id}')" class="text-rose-500 text-xs px-2 py-1.5 font-bold hover:bg-rose-50 rounded-lg transition"><i class="fa-solid fa-trash"></i></button>
             </div>
@@ -297,39 +298,104 @@ function renderMembersList(members) {
     `).join('');
 }
 
-// ========== QR GENERATOR ==========
-async function generateMemberQr(memberId) {
-    try {
-        const { data: token, error } = await supabase.rpc('make_qr_token', { p_member_id: memberId });
-        if (error) throw error;
-
-        const url = `${location.origin}${location.pathname}?t=${token}`;
-        const container = document.getElementById('qrcode-container');
-        
-        // Jika dipanggil dari admin list, kita tampilkan alert link-nya saja atau
-        // jika container qr tersedia (di halaman anggota), tampilkan QR.
-        if (!container || container.offsetParent === null) {
-            alert(`Link Login QR:\n\n${url}\n\n(Berlaku 5 menit)`);
-            return;
-        }
-
-        container.innerHTML = '';
-        new QRCode(container, { text: url, width: 150, height: 150 });
-
-        let sisa = 5 * 60;
-        const el = document.getElementById('qr-countdown');
-        if (qrTimer) clearInterval(qrTimer);
-        el.innerText = 'Berlaku 05:00';
-        qrTimer = setInterval(() => {
-            sisa--;
-            el.innerText = sisa > 0
-                ? `Berlaku ${String(Math.floor(sisa/60)).padStart(2,'0')}:${String(sisa%60).padStart(2,'0')}`
-                : 'Kadaluarsa — buat ulang';
-            if (sisa <= 0) clearInterval(qrTimer);
-        }, 1000);
-    } catch (e) {
-        toast(e.message || 'Gagal membuat QR', 'error');
+// ========== MEMBER CARD & LIST ==========
+function renderMemberCard() {
+    if (!currentMember) return;
+    document.getElementById('member-card-name').innerText = currentMember.name;
+    document.getElementById('member-card-role').innerText = currentMember.role;
+    document.getElementById('member-card-no').innerText = currentMember.no_anggota;
+    document.getElementById('member-card-loper').innerText = currentMember.loper || '-';
+    
+    const qrContainer = document.getElementById('qrcode-container');
+    if (qrContainer && currentMember.qr_secret) {
+        qrContainer.innerHTML = '';
+        const url = `${location.origin}${location.pathname}?t=${currentMember.qr_secret}`;
+        new QRCode(qrContainer, { text: url, width: 130, height: 130 });
+        document.getElementById('qr-countdown').innerText = 'QR Permanen (Kartu Anggota)';
     }
+}
+
+async function loadMemberListForMembers() {
+    const { data } = await supabase.from('members').select('no_anggota, name, role');
+    renderMemberListForMembers(data || []);
+}
+
+function renderMemberListForMembers(members) {
+    const c = document.getElementById('member-view-members-list');
+    const total = document.getElementById('member-total-count');
+    if (total) total.innerText = `Total: ${members.length}`;
+    if (!c) return;
+    if (!members.length) { c.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Belum ada anggota.</p>`; return; }
+    c.innerHTML = members.map((m, i) => `
+        <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100/80 rounded-2xl gap-2">
+            <div class="flex items-center space-x-2.5 min-w-0">
+                <span class="w-6 h-6 bg-rms-green text-amber-300 rounded-lg flex items-center justify-center text-[10px] font-black shadow-sm shrink-0">${i + 1}</span>
+                <h4 class="font-bold text-xs text-slate-800 truncate">${esc(m.name)} <span class="text-[10px] text-slate-400">(${esc(m.no_anggota)})</span></h4>
+            </div>
+            <span class="text-[10px] bg-amber-100 text-amber-900 border border-amber-200/60 font-bold px-2 py-0.5 rounded-lg shrink-0">${esc(m.role)}</span>
+        </div>
+    `).join('');
+}
+
+// ========== CETAK KARTU FISIK (QR PERMANEN) ==========
+async function printSingleCard(id) {
+    const { data: members } = await supabase.from('members').select('*').eq('id', id);
+    if (members && members.length) renderCardsHTML(members);
+}
+
+async function exportAllCards() {
+    const { data: members } = await supabase.from('members').select('*').order('no_anggota');
+    if (!members || !members.length) return toast('Belum ada anggota untuk dicetak', 'error');
+    renderCardsHTML(members);
+}
+
+function renderCardsHTML(members) {
+    const area = document.getElementById('print-area');
+    
+    area.innerHTML = `
+        <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; padding: 20px;">
+            ${members.map(m => {
+                return `
+                <div class="card-print" style="width: 320px; height: 200px; background: linear-gradient(135deg, #1E5E3A, #0F3D24); border-radius: 16px; color: white; padding: 16px; position: relative; box-sizing: border-box; page-break-inside: avoid; border: 2px solid #E5A93C; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 6px;">
+                        <div>
+                            <div style="font-size: 9px; color: #E5A93C; font-weight: 800; letter-spacing: 1px;">KELOMPOK TANI</div>
+                            <div style="font-size: 13px; font-weight: 900; letter-spacing: 0.5px;">RIAU MANDIRI SEJAHTERA</div>
+                        </div>
+                        <div style="background: #E5A93C; color: #0F3D24; font-size: 9px; font-weight: 900; padding: 2px 6px; border-radius: 8px;">E-CARD</div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                        <div style="font-size: 11px; line-height: 1.4; flex-grow: 1; padding-right: 10px;">
+                            <div style="color: #a7f3d0; font-size: 9px; margin-bottom: 1px;">Nama</div>
+                            <div style="font-weight: 800; font-size: 13px; color: #fde68a; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(m.name)}</div>
+                            <div style="color: #a7f3d0; font-size: 9px; margin-bottom: 1px;">No. Anggota</div>
+                            <div style="font-family: monospace; font-weight: bold; color: #fde68a; margin-bottom: 4px;">${esc(m.no_anggota)}</div>
+                            <div style="color: #a7f3d0; font-size: 9px; margin-bottom: 1px;">Jabatan</div>
+                            <div style="color: white; font-weight: bold; margin-bottom: 4px;">${esc(m.role)}</div>
+                            <div style="color: #a7f3d0; font-size: 9px; margin-bottom: 1px;">Wilayah / Loper</div>
+                            <div style="color: white; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(m.loper || '-')}</div>
+                        </div>
+                        <div style="background: white; padding: 5px; border-radius: 8px; flex-shrink: 0;" id="qr-print-${m.id}"></div>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>
+        <p style="text-align: center; font-size: 12px; color: #64748b; margin-top: 20px;">Scan QR Code menggunakan kamera HP untuk login otomatis.</p>
+    `;
+
+    members.forEach(m => {
+        const el = document.getElementById(`qr-print-${m.id}`);
+        if (el) {
+            const url = `${location.origin}${location.pathname}?t=${m.qr_secret}`;
+            new QRCode(el, { text: url, width: 70, height: 70 });
+        }
+    });
+
+    area.classList.remove('hidden');
+    setTimeout(() => {
+        window.print();
+        setTimeout(() => { area.classList.add('hidden'); area.innerHTML = ''; }, 1000);
+    }, 500);
 }
 
 // ========== FINANCE ==========
@@ -405,39 +471,6 @@ function renderMemberFinanceView(finance) {
     document.getElementById('member-summary-income').innerText = fmtRp(income);
     document.getElementById('member-summary-expense').innerText = fmtRp(expense);
     document.getElementById('member-summary-balance').innerText = fmtRp(balance);
-}
-
-// ========== MEMBER CARD & LIST ==========
-function renderMemberCard() {
-    if (!currentMember) return;
-    document.getElementById('member-card-name').innerText = currentMember.name;
-    document.getElementById('member-card-role').innerText = currentMember.role;
-    document.getElementById('member-card-no').innerText = currentMember.no_anggota;
-    document.getElementById('member-card-loper').innerText = currentMember.loper || '-';
-    const qrContainer = document.getElementById('qrcode-container');
-    if (qrContainer) qrContainer.innerHTML = '<p class="text-[10px] text-slate-400">Klik tombol di bawah</p>';
-}
-
-async function loadMemberListForMembers() {
-    const { data } = await supabase.from('members').select('no_anggota, name, role');
-    renderMemberListForMembers(data || []);
-}
-
-function renderMemberListForMembers(members) {
-    const c = document.getElementById('member-view-members-list');
-    const total = document.getElementById('member-total-count');
-    if (total) total.innerText = `Total: ${members.length}`;
-    if (!c) return;
-    if (!members.length) { c.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Belum ada anggota.</p>`; return; }
-    c.innerHTML = members.map((m, i) => `
-        <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100/80 rounded-2xl gap-2">
-            <div class="flex items-center space-x-2.5 min-w-0">
-                <span class="w-6 h-6 bg-rms-green text-amber-300 rounded-lg flex items-center justify-center text-[10px] font-black shadow-sm shrink-0">${i + 1}</span>
-                <h4 class="font-bold text-xs text-slate-800 truncate">${esc(m.name)} <span class="text-[10px] text-slate-400">(${esc(m.no_anggota)})</span></h4>
-            </div>
-            <span class="text-[10px] bg-amber-100 text-amber-900 border border-amber-200/60 font-bold px-2 py-0.5 rounded-lg shrink-0">${esc(m.role)}</span>
-        </div>
-    `).join('');
 }
 
 // ========== ADMINS ==========
