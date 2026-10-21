@@ -141,7 +141,12 @@
             <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
                 <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
                     <h3 class="font-extrabold text-sm text-slate-800"><i class="fa-solid fa-address-book text-rms-green mr-1"></i> Daftar Anggota</h3>
-                    <button onclick="exportMemberReport()" class="bg-blue-600 text-white text-xs px-3 py-2 rounded-xl font-bold shadow"><i class="fa-solid fa-file-pdf"></i> Cetak</button>
+                    <div class="flex gap-2">
+                        <button onclick="exportAllCards()" class="bg-rms-amber hover:bg-amber-600 text-white text-xs px-3 py-2 rounded-xl font-bold shadow flex items-center space-x-1.5">
+                            <i class="fa-solid fa-id-card"></i><span>Cetak Semua Kartu</span>
+                        </button>
+                        <button onclick="exportMemberReport()" class="bg-blue-600 text-white text-xs px-3 py-2 rounded-xl font-bold shadow"><i class="fa-solid fa-file-pdf"></i> Cetak Tabel</button>
+                    </div>
                 </div>
                 <div id="members-list-container" class="space-y-2"></div>
             </div>
@@ -206,10 +211,7 @@
                 <p class="text-[11px] font-extrabold text-rms-green mb-2 uppercase tracking-wider"><i class="fa-solid fa-qrcode mr-1 text-rms-amber"></i> QR Identitas Anggota</p>
                 <div id="qrcode-container" class="flex justify-center p-2 bg-white rounded-xl border border-slate-200 inline-block mx-auto mb-1"></div>
                 <p id="qr-countdown" class="text-[10px] text-slate-500 font-medium mb-2"></p>
-                <button onclick="generateMemberQr(currentMember.id)" class="bg-rms-green hover:bg-rms-lightgreen text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow">
-                    <i class="fa-solid fa-qrcode mr-1"></i> Tampilkan QR Login
-                </button>
-                <p class="text-[10px] text-slate-500 font-medium mt-1">QR berlaku 5 menit & sekali pakai.</p>
+                <p class="text-[10px] text-slate-500 font-medium mt-1">Scan QR di atas untuk login otomatis.</p>
             </div>
         </div>
 
@@ -242,4 +244,4 @@
 
 <script src="script.js"></script>
 </body>
-                            </html>
+</html>
