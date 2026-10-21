@@ -1,19 +1,34 @@
 const SUPABASE_URL = "https://hihhduyzosdrzbvtxsts.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_FR47_uA2_HAesqrPGvzmoA_n0KL358W";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let currentUser = null;
-let currentMember = null;
-let currentProfile = null;
+const OWNER_EMAILS = ['arniusputra6895@gmail.com', 'arniussimarmata@gmail.com'];
+const OWNER_PASSWORDS = ['@Simarmata28', 'admin123'];
+
+let dbAdmins = [
+    { id: '1', name: 'Arnius Simarmata', email: 'arniussimarmata@gmail.com', pass: '@Simarmata28' },
+    { id: '2', name: 'Arnius Putra', email: 'arniusputra6895@gmail.com', pass: '@Simarmata28' }
+];
+let dbMembers = [
+    { id: '1', noAnggota: 'RMS-001', name: 'Arnius Simarmata', nik: '1404142801980001', role: 'Ketua Kelompok Tani', phone: '082383301041', loper: 'Pekanbaru / Indragiri' }
+];
+let dbFinance = [];
+let currentUser = JSON.parse(localStorage.getItem('rms_current_user')) || null;
+let activeOtpCode = null;
+let pendingAction = null;
 let realtimeChannel = null;
+let tesseractLoaded = false;
 
-// ========== HELPERS ==========
-function esc(s) {
-    if (s == null) return '';
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+function esc(str) {
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
-function fmtRp(n) { return 'Rp ' + (Number(n)||0).toLocaleString('id-ID'); }
-function toast(msg, type='success') {
+
+function fmtRp(n) {
+    return 'Rp ' + (Number(n) || 0).toLocaleString('id-ID');
+}
+
+function toast(msg, type = 'success') {
     const c = document.getElementById('toast-container');
     const t = document.createElement('div');
     t.className = 'toast' + (type !== 'success' ? ' ' + type : '');
@@ -25,6 +40,86 @@ function toast(msg, type='success') {
         setTimeout(() => t.remove(), 300);
     }, 2800);
 }
+
+window.onload = async function () {
+    await syncCloudData();
+    
+    // Auto-login saat URL dibuka dari hasil scan QR Code
+    const urlParams = new URLSearchParams(window.location.search);
+    const scanNik = urlParams.get('nik');
+    
+    if (scanNik) {
+        const foundMember = dbMembers.find(m => m.nik === scanNik);
+        if (foundMember) {
+            currentUser = { role: 'member', ...foundMember };
+            localStorage.setItem('rms_current_user', JSON.stringify(currentUser));
+            toast(`Login otomatis berhasil: ${foundMember.name}`);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else {
+            toast('NIK dari QR Code tidak terdaftar', 'error');
+        }
+    }
+
+    if (currentUser) renderApp();
+    subscribeRealtimeCloud();
+};
+
+function updateSyncBadge(text, ok) {
+    document.getElementById('sync-text').innerText = text;
+    const b = document.getElementById('sync-badge');
+    b.className = ok
+        ? "bg-emerald-950/50 hover:bg-emerald-950/60 border border-amber-300/40 text-amber-200 text-[10px] sm:text-xs px-2.5 py-1.5 rounded-full font-semibold shadow backdrop-blur-sm transition active:scale-95 whitespace-nowrap"
+        : "bg-amber-900/50 hover:bg-amber-900/60 border border-amber-400/40 text-amber-100 text-[10px] sm:text-xs px-2.5 py-1.5 rounded-full font-semibold shadow backdrop-blur-sm transition active:scale-95 whitespace-nowrap";
+}
+
+async function syncCloudData() {
+    updateSyncBadge('Menyinkronkan…', false);
+    try {
+        const { data, error } = await supabaseClient.from('rbm_data').select('*');
+        if (error) throw error;
+        if (data && data.length > 0) {
+            data.forEach(row => {
+                if (row.id === 'admins' && row.data) dbAdmins = row.data;
+                if (row.id === 'members' && row.data) dbMembers = row.data;
+                if (row.id === 'finance' && row.data) dbFinance = row.data;
+            });
+            updateSyncBadge('Cloud Online', true);
+        } else {
+            await pushAllToCloud();
+            updateSyncBadge('Cloud Online', true);
+        }
+        if (currentUser) renderApp();
+        else renderMemberListForMembers();
+    } catch (err) {
+        console.error('Sync error:', err);
+        updateSyncBadge('Offline', false);
+    }
+}
+
+async function pushAllToCloud() {
+    try {
+        localStorage.setItem('rms_current_user', JSON.stringify(currentUser));
+        await Promise.all([
+            supabaseClient.from('rbm_data').upsert({ id: 'admins', data: dbAdmins }),
+            supabaseClient.from('rbm_data').upsert({ id: 'members', data: dbMembers }),
+            supabaseClient.from('rbm_data').upsert({ id: 'finance', data: dbFinance })
+        ]);
+    } catch (err) {
+        console.error('Push error:', err);
+        toast('Gagal simpan ke cloud', 'error');
+    }
+}
+
+function subscribeRealtimeCloud() {
+    if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
+    realtimeChannel = supabaseClient
+        .channel('public:rbm_data')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'rbm_data' }, async () => {
+            await syncCloudData();
+        })
+        .subscribe();
+}
+
 function switchLoginTab(type) {
     const aBtn = document.getElementById('tab-btn-admin');
     const mBtn = document.getElementById('tab-btn-member');
@@ -40,6 +135,64 @@ function switchLoginTab(type) {
         mForm.classList.remove('hidden'); aForm.classList.add('hidden');
     }
 }
+
+function handleLoginAdmin(e) {
+    e.preventDefault();
+    const email = document.getElementById('admin-email').value.trim().toLowerCase();
+    const pass = document.getElementById('admin-pass').value.trim();
+    const isOwner = OWNER_EMAILS.includes(email) && OWNER_PASSWORDS.includes(pass);
+    const found = dbAdmins.find(a => a.email.toLowerCase() === email && a.pass === pass);
+    if (isOwner || found) {
+        currentUser = { role: 'admin', name: (found?.name) || 'Owner', email };
+        localStorage.setItem('rms_current_user', JSON.stringify(currentUser));
+        renderApp();
+        toast('Berhasil masuk sebagai Pengurus');
+    } else {
+        toast('Email atau Kata Sandi salah', 'error');
+    }
+}
+
+function handleLoginMember(e) {
+    e.preventDefault();
+    const nik = document.getElementById('member-nik').value.trim();
+    const found = dbMembers.find(m => m.nik === nik);
+    if (found) {
+        currentUser = { role: 'member', ...found };
+        localStorage.setItem('rms_current_user', JSON.stringify(currentUser));
+        renderApp();
+        toast(`Selamat datang, ${found.name.split(' ')[0]}`);
+    } else {
+        toast('NIK tidak ditemukan', 'error');
+    }
+}
+
+function logout() {
+    currentUser = null;
+    localStorage.removeItem('rms_current_user');
+    document.getElementById('view-login').classList.remove('hidden');
+    document.getElementById('view-admin-dashboard').classList.add('hidden');
+    document.getElementById('view-member-dashboard').classList.add('hidden');
+    const u = document.getElementById('user-info-section');
+    u.classList.add('hidden'); u.classList.remove('flex');
+    toast('Anda telah keluar');
+}
+
+function renderApp() {
+    document.getElementById('view-login').classList.add('hidden');
+    const u = document.getElementById('user-info-section');
+    u.classList.remove('hidden'); u.classList.add('flex');
+    document.getElementById('nav-username').innerText = currentUser.name;
+    if (currentUser.role === 'admin') {
+        document.getElementById('view-admin-dashboard').classList.remove('hidden');
+        document.getElementById('view-member-dashboard').classList.add('hidden');
+        renderMembersList(); renderFinanceList(); renderAdminsList();
+    } else {
+        document.getElementById('view-admin-dashboard').classList.add('hidden');
+        document.getElementById('view-member-dashboard').classList.remove('hidden');
+        renderMemberCard(); renderMemberFinanceView(); renderMemberListForMembers();
+    }
+}
+
 function switchAdminTab(tab) {
     ['members','finance','admins'].forEach(t => {
         document.getElementById(`admin-tab-${t}`).classList.remove('active');
@@ -48,6 +201,78 @@ function switchAdminTab(tab) {
     document.getElementById(`admin-tab-${tab}`).classList.add('active');
     document.getElementById(`content-admin-${tab}`).classList.remove('hidden');
 }
+
+function initiateAddAdmin(e) {
+    e.preventDefault();
+    const name = document.getElementById('add-admin-name').value.trim();
+    const email = document.getElementById('add-admin-email').value.trim();
+    const pass = document.getElementById('add-admin-pass').value.trim();
+    if (dbAdmins.some(a => a.email.toLowerCase() === email.toLowerCase())) {
+        toast('Email sudah terdaftar', 'error'); return;
+    }
+    pendingAction = { type: 'add', payload: { name, email, pass } };
+    sendOtpToOwnerEmail();
+}
+
+function requestDeleteAdmin(id) {
+    if (dbAdmins.length <= 1) { toast('Tidak bisa hapus admin terakhir', 'warn'); return; }
+    const t = dbAdmins.find(a => a.id === id);
+    if (!t) return;
+    if (confirm(`Hapus admin "${t.name}"?`)) {
+        pendingAction = { type: 'delete', payload: { id, name: t.name } };
+        sendOtpToOwnerEmail();
+    }
+}
+
+function sendOtpToOwnerEmail() {
+    activeOtpCode = String(Math.floor(100000 + Math.random() * 900000));
+    document.getElementById('otp-input-code').value = '';
+    document.getElementById('otp-modal').classList.remove('hidden');
+    document.getElementById('otp-modal').classList.add('flex');
+    alert(`Kode OTP Persetujuan: ${activeOtpCode}`);
+}
+
+async function confirmOtpSubmission() {
+    const entered = document.getElementById('otp-input-code').value.trim();
+    if (entered !== activeOtpCode) { toast('Kode OTP salah', 'error'); return; }
+    if (pendingAction.type === 'add') {
+        const { name, email, pass } = pendingAction.payload;
+        dbAdmins.push({ id: Date.now().toString(), name, email, pass });
+        await pushAllToCloud(); renderAdminsList();
+        document.getElementById('add-admin-name').value = '';
+        document.getElementById('add-admin-email').value = '';
+        document.getElementById('add-admin-pass').value = '';
+        toast('Admin baru ditambahkan');
+    } else if (pendingAction.type === 'delete') {
+        dbAdmins = dbAdmins.filter(a => a.id !== pendingAction.payload.id);
+        await pushAllToCloud(); renderAdminsList();
+        toast('Admin dihapus');
+    }
+    closeOtpModal();
+}
+
+function closeOtpModal() {
+    activeOtpCode = null; pendingAction = null;
+    document.getElementById('otp-modal').classList.add('hidden');
+    document.getElementById('otp-modal').classList.remove('flex');
+}
+
+function renderAdminsList() {
+    const c = document.getElementById('admins-list-container');
+    if (!dbAdmins.length) { c.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Belum ada admin.</p>`; return; }
+    c.innerHTML = dbAdmins.map(a => `
+        <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100 rounded-2xl gap-2">
+            <div class="min-w-0">
+                <h4 class="font-bold text-xs text-slate-800 truncate">${esc(a.name)}</h4>
+                <p class="text-[11px] text-slate-500 truncate">${esc(a.email)}</p>
+            </div>
+            <button onclick="requestDeleteAdmin('${a.id}')" class="text-rose-500 text-xs px-2 py-1.5 font-bold hover:bg-rose-50 rounded-lg transition shrink-0">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        </div>
+    `).join('');
+}
+
 function handleRoleChange() {
     const role = document.getElementById('add-role').value;
     const c = document.getElementById('seksi-field-container');
@@ -55,143 +280,36 @@ function handleRoleChange() {
     if (role === 'Seksi') { c.classList.remove('hidden'); inp.required = true; }
     else { c.classList.add('hidden'); inp.required = false; }
 }
-function cancelEditMember() {
-    document.getElementById('edit-member-id').value = '';
-    document.getElementById('form-member-input').reset();
-    document.getElementById('form-member-title').innerHTML = '<i class="fa-solid fa-user-plus mr-1"></i> Pendaftaran Anggota Baru';
-    document.getElementById('btn-save-member').innerText = 'Simpan Anggota';
-    document.getElementById('btn-cancel-edit-member').classList.add('hidden');
-    document.getElementById('seksi-field-container').classList.add('hidden');
-}
 
-// ========== BOOT ==========
-window.addEventListener('DOMContentLoaded', boot);
-
-async function boot() {
-    // Cek QR token di URL
-    const params = new URLSearchParams(location.search);
-    const qrToken = params.get('t');
-    if (qrToken) {
-        history.replaceState({}, '', location.pathname); // Bersihkan URL
-        await loginWithQrToken(qrToken);
-    }
-
-    // Cek session yang tersimpan
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session && !currentUser) {
-        currentUser = session.user;
-        await loadProfileAndMember();
-        renderApp();
-    } else if (!session) {
-        renderLogin();
-    }
-
-    subscribeRealtime();
-}
-
-// ========== QR LOGIN ==========
-async function loginWithQrToken(token) {
+async function processDocumentScan(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('scan-status');
+    statusEl.classList.remove('hidden');
     try {
-        const { data, error } = await supabase.rpc('login_by_qr', { p_token: token });
-        if (error) throw error;
-
-        const { email, password } = data;
-        const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({ email, password });
-        if (authErr) throw authErr;
-
-        currentUser = authData.user;
-        await loadProfileAndMember();
-        renderApp();
-        toast(`Selamat datang, ${currentMember?.name ?? ''}`);
-    } catch (e) {
-        console.error(e);
-        toast(e.message || 'QR tidak valid', 'error');
+        if (!tesseractLoaded) {
+            await new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = 'https://unpkg.com/tesseract.js@v4.0.2/dist/tesseract.min.js';
+                s.onload = resolve; s.onerror = reject;
+                document.head.appendChild(s);
+            });
+            tesseractLoaded = true;
+        }
+        const { data: { text } } = await Tesseract.recognize(file, 'ind');
+        statusEl.classList.add('hidden');
+        const nikMatch = text.match(/\b\d{16}\b/);
+        if (nikMatch) document.getElementById('add-nik').value = nikMatch[0];
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
+        if (lines.length) {
+            const nameLine = lines.find(l => /^[A-Z\s]{4,}$/.test(l) && l.length < 40);
+            if (nameLine) document.getElementById('add-name').value = nameLine;
+        }
+        toast('Pemindaian selesai — periksa hasilnya');
+    } catch (err) {
+        statusEl.classList.add('hidden');
+        toast('Gagal memindai dokumen', 'error');
     }
-}
-
-// ========== AUTH ==========
-async function handleLoginAdmin(e) {
-    e.preventDefault();
-    const email = document.getElementById('admin-email').value.trim();
-    const pass = document.getElementById('admin-pass').value;
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-    if (error) return toast(error.message, 'error');
-    const { data: { user } } = await supabase.auth.getUser();
-    currentUser = user;
-    await loadProfileAndMember();
-    if (currentProfile?.role !== 'admin') {
-        await supabase.auth.signOut();
-        return toast('Akun ini bukan admin', 'error');
-    }
-    renderApp();
-    toast('Berhasil masuk sebagai Pengurus');
-}
-
-async function handleLoginMember(e) {
-    e.preventDefault();
-    const email = document.getElementById('member-email').value.trim();
-    const pass = document.getElementById('member-pass').value;
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-    if (error) return toast(error.message, 'error');
-    const { data: { user } } = await supabase.auth.getUser();
-    currentUser = user;
-    await loadProfileAndMember();
-    if (!currentMember) {
-        await supabase.auth.signOut();
-        return toast('Akun ini bukan anggota', 'error');
-    }
-    renderApp();
-    toast('Berhasil masuk');
-}
-
-async function logout() {
-    await supabase.auth.signOut();
-    currentUser = null; currentMember = null; currentProfile = null;
-    renderLogin();
-    toast('Anda telah keluar');
-}
-
-async function loadProfileAndMember() {
-    if (!currentUser) return;
-    const { data: prof } = await supabase.from('profiles').select('role').eq('user_id', currentUser.id).maybeSingle();
-    const { data: mem } = await supabase.from('members').select('*').eq('user_id', currentUser.id).maybeSingle();
-    currentProfile = prof;
-    currentMember = mem;
-}
-
-// ========== RENDER ==========
-function renderLogin() {
-    document.getElementById('view-login').classList.remove('hidden');
-    document.getElementById('view-admin-dashboard').classList.add('hidden');
-    document.getElementById('view-member-dashboard').classList.add('hidden');
-    const u = document.getElementById('user-info-section');
-    u.classList.add('hidden'); u.classList.remove('flex');
-}
-
-function renderApp() {
-    document.getElementById('view-login').classList.add('hidden');
-    const u = document.getElementById('user-info-section');
-    u.classList.remove('hidden'); u.classList.add('flex');
-    document.getElementById('nav-username').innerText = currentMember?.name ?? currentUser.email;
-
-    if (currentProfile?.role === 'admin') {
-        document.getElementById('view-admin-dashboard').classList.remove('hidden');
-        document.getElementById('view-member-dashboard').classList.add('hidden');
-        loadMembers(); loadFinance(); loadAdmins();
-    } else {
-        document.getElementById('view-admin-dashboard').classList.add('hidden');
-        document.getElementById('view-member-dashboard').classList.remove('hidden');
-        renderMemberCard();
-        loadFinanceForMember();
-        loadMemberListForMembers();
-    }
-}
-
-// ========== MEMBERS (ADMIN) ==========
-async function loadMembers() {
-    const { data, error } = await supabase.from('members').select('*').order('no_anggota');
-    if (error) return toast(error.message, 'error');
-    renderMembersList(data || []);
 }
 
 async function handleAddMember(e) {
@@ -201,51 +319,30 @@ async function handleAddMember(e) {
     const nik = document.getElementById('add-nik').value.trim();
     const baseRole = document.getElementById('add-role').value;
     const phone = document.getElementById('add-phone').value.trim();
-    const email = document.getElementById('add-member-email')?.value.trim();
     const loper = document.getElementById('add-loper-location').value.trim() || '-';
-
-    if (!/^\d{16}$/.test(nik)) return toast('NIK harus 16 digit', 'error');
-
+    if (!/^\d{16}$/.test(nik)) { toast('NIK harus 16 digit angka', 'error'); return; }
+    const dup = dbMembers.find(m => m.nik === nik && m.id !== editId);
+    if (dup) { toast('NIK sudah terdaftar atas nama ' + dup.name, 'error'); return; }
     let finalRole = baseRole;
     if (baseRole === 'Seksi') {
         const s = document.getElementById('add-seksi-name').value.trim();
         finalRole = s ? `Seksi (${s})` : 'Seksi Bidang';
     }
-
     if (editId) {
-        const { error } = await supabase.from('members')
-            .update({ name, nik, role: finalRole, phone, loper })
-            .eq('id', editId);
-        if (error) return toast(error.message, 'error');
+        const i = dbMembers.findIndex(m => m.id === editId);
+        if (i !== -1) dbMembers[i] = { ...dbMembers[i], name, nik, role: finalRole, phone, loper };
         toast('Data anggota diperbarui');
     } else {
-        if (!email) return toast('Email wajib diisi', 'error');
-        const tempPass = Math.random().toString(36).slice(-10) + 'Aa1!';
-        const { data: signUp, error: sErr } = await supabase.auth.signUp({ email, password: tempPass });
-        if (sErr) return toast(sErr.message, 'error');
-        if (!signUp.user) return toast('Gagal membuat user (email mungkin terdaftar)', 'error');
-
-        const { count } = await supabase.from('members').select('*', { count: 'exact', head: true });
-        const nextNo = 'RMS-' + String((count || 0) + 1).padStart(3, '0');
-        const qrSecret = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
-
-        const { error } = await supabase.from('members').insert({
-            user_id: signUp.user.id,
-            no_anggota: nextNo, name, nik, role: finalRole, phone, loper,
-            qr_secret: qrSecret
-        });
-        if (error) return toast(error.message, 'error');
-
-        await supabase.from('profiles').upsert({ user_id: signUp.user.id, role: 'member' });
-        toast(`Anggota ${nextNo} ditambahkan. Password: ${tempPass}`, 'warn');
+        const nextNo = 'RMS-' + String(dbMembers.length + 1).padStart(3, '0');
+        dbMembers.push({ id: Date.now().toString(), noAnggota: nextNo, name, nik, role: finalRole, phone, loper });
+        toast(`Anggota ${nextNo} ditambahkan`);
     }
-
-    cancelEditMember();
-    await loadMembers();
+    await pushAllToCloud();
+    renderMembersList(); renderMemberListForMembers(); cancelEditMember();
 }
 
-async function editMember(id) {
-    const { data: m } = await supabase.from('members').select('*').eq('id', id).single();
+function editMember(id) {
+    const m = dbMembers.find(x => x.id === id);
     if (!m) return;
     document.getElementById('edit-member-id').value = m.id;
     document.getElementById('add-name').value = m.name;
@@ -263,34 +360,44 @@ async function editMember(id) {
     document.getElementById('form-member-title').innerHTML = '<i class="fa-solid fa-user-pen mr-1"></i> Perbaiki Data Anggota';
     document.getElementById('btn-save-member').innerText = 'Simpan Perubahan';
     document.getElementById('btn-cancel-edit-member').classList.remove('hidden');
+    document.getElementById('scan-container').classList.add('hidden');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelEditMember() {
+    document.getElementById('edit-member-id').value = '';
+    document.getElementById('form-member-input').reset();
+    document.getElementById('form-member-title').innerHTML = '<i class="fa-solid fa-user-plus mr-1"></i> Pendaftaran Anggota Baru';
+    document.getElementById('btn-save-member').innerText = 'Simpan Anggota';
+    document.getElementById('btn-cancel-edit-member').classList.add('hidden');
+    document.getElementById('scan-container').classList.remove('hidden');
+    document.getElementById('seksi-field-container').classList.add('hidden');
 }
 
 async function deleteMember(id) {
     if (!confirm('Hapus anggota ini?')) return;
-    const { error } = await supabase.from('members').delete().eq('id', id);
-    if (error) return toast(error.message, 'error');
-    await loadMembers();
+    dbMembers = dbMembers.filter(m => m.id !== id);
+    await pushAllToCloud();
+    renderMembersList(); renderMemberListForMembers();
     toast('Anggota dihapus');
 }
 
-function renderMembersList(members) {
+function renderMembersList() {
     const c = document.getElementById('members-list-container');
-    if (!members.length) {
+    if (!dbMembers.length) {
         c.innerHTML = `<div class="text-center py-8 text-slate-400"><i class="fa-solid fa-users-slash text-3xl mb-2 block"></i><p class="text-xs">Belum ada data anggota.</p></div>`;
         return;
     }
-    c.innerHTML = members.map(m => `
+    c.innerHTML = dbMembers.map(m => `
         <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100/80 rounded-2xl gap-2">
             <div class="min-w-0">
                 <h4 class="font-extrabold text-xs text-slate-800 truncate">
                     ${esc(m.name)}
-                    <span class="text-[10px] bg-amber-100 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-md ml-1 font-bold">${esc(m.no_anggota)}</span>
+                    <span class="text-[10px] bg-amber-100 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-md ml-1 font-bold">${esc(m.noAnggota || 'RMS-000')}</span>
                 </h4>
                 <p class="text-[11px] text-slate-500 font-medium truncate">${esc(m.role)} · NIK: ${esc(m.nik)} · ${esc(m.loper || '-')}</p>
             </div>
             <div class="flex items-center space-x-1 shrink-0">
-                <button onclick="printSingleCard('${m.id}')" class="text-rms-green text-xs px-2 py-1.5 font-bold hover:bg-emerald-50 rounded-lg transition" title="Cetak Kartu"><i class="fa-solid fa-id-card"></i></button>
                 <button onclick="editMember('${m.id}')" class="text-amber-700 text-xs px-2 py-1.5 font-bold hover:bg-amber-100 rounded-lg transition"><i class="fa-solid fa-pen"></i></button>
                 <button onclick="deleteMember('${m.id}')" class="text-rose-500 text-xs px-2 py-1.5 font-bold hover:bg-rose-50 rounded-lg transition"><i class="fa-solid fa-trash"></i></button>
             </div>
@@ -298,260 +405,151 @@ function renderMembersList(members) {
     `).join('');
 }
 
-// ========== MEMBER CARD & LIST ==========
-function renderMemberCard() {
-    if (!currentMember) return;
-    document.getElementById('member-card-name').innerText = currentMember.name;
-    document.getElementById('member-card-role').innerText = currentMember.role;
-    document.getElementById('member-card-no').innerText = currentMember.no_anggota;
-    document.getElementById('member-card-loper').innerText = currentMember.loper || '-';
-    
-    const qrContainer = document.getElementById('qrcode-container');
-    if (qrContainer && currentMember.qr_secret) {
-        qrContainer.innerHTML = '';
-        const url = `${location.origin}${location.pathname}?t=${currentMember.qr_secret}`;
-        new QRCode(qrContainer, { text: url, width: 130, height: 130 });
-        document.getElementById('qr-countdown').innerText = 'QR Permanen (Kartu Anggota)';
-    }
-}
-
-async function loadMemberListForMembers() {
-    const { data } = await supabase.from('members').select('no_anggota, name, role');
-    renderMemberListForMembers(data || []);
-}
-
-function renderMemberListForMembers(members) {
-    const c = document.getElementById('member-view-members-list');
-    const total = document.getElementById('member-total-count');
-    if (total) total.innerText = `Total: ${members.length}`;
-    if (!c) return;
-    if (!members.length) { c.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Belum ada anggota.</p>`; return; }
-    c.innerHTML = members.map((m, i) => `
-        <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100/80 rounded-2xl gap-2">
-            <div class="flex items-center space-x-2.5 min-w-0">
-                <span class="w-6 h-6 bg-rms-green text-amber-300 rounded-lg flex items-center justify-center text-[10px] font-black shadow-sm shrink-0">${i + 1}</span>
-                <h4 class="font-bold text-xs text-slate-800 truncate">${esc(m.name)} <span class="text-[10px] text-slate-400">(${esc(m.no_anggota)})</span></h4>
-            </div>
-            <span class="text-[10px] bg-amber-100 text-amber-900 border border-amber-200/60 font-bold px-2 py-0.5 rounded-lg shrink-0">${esc(m.role)}</span>
-        </div>
-    `).join('');
-}
-
-// ========== CETAK KARTU FISIK (QR PERMANEN) ==========
-async function printSingleCard(id) {
-    const { data: members } = await supabase.from('members').select('*').eq('id', id);
-    if (members && members.length) renderCardsHTML(members);
-}
-
-async function exportAllCards() {
-    const { data: members } = await supabase.from('members').select('*').order('no_anggota');
-    if (!members || !members.length) return toast('Belum ada anggota untuk dicetak', 'error');
-    renderCardsHTML(members);
-}
-
-function renderCardsHTML(members) {
-    const area = document.getElementById('print-area');
-    
-    area.innerHTML = `
-        <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; padding: 20px;">
-            ${members.map(m => {
-                return `
-                <div class="card-print" style="width: 320px; height: 200px; background: linear-gradient(135deg, #1E5E3A, #0F3D24); border-radius: 16px; color: white; padding: 16px; position: relative; box-sizing: border-box; page-break-inside: avoid; border: 2px solid #E5A93C; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 6px;">
-                        <div>
-                            <div style="font-size: 9px; color: #E5A93C; font-weight: 800; letter-spacing: 1px;">KELOMPOK TANI</div>
-                            <div style="font-size: 13px; font-weight: 900; letter-spacing: 0.5px;">RIAU MANDIRI SEJAHTERA</div>
-                        </div>
-                        <div style="background: #E5A93C; color: #0F3D24; font-size: 9px; font-weight: 900; padding: 2px 6px; border-radius: 8px;">E-CARD</div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
-                        <div style="font-size: 11px; line-height: 1.4; flex-grow: 1; padding-right: 10px;">
-                            <div style="color: #a7f3d0; font-size: 9px; margin-bottom: 1px;">Nama</div>
-                            <div style="font-weight: 800; font-size: 13px; color: #fde68a; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(m.name)}</div>
-                            <div style="color: #a7f3d0; font-size: 9px; margin-bottom: 1px;">No. Anggota</div>
-                            <div style="font-family: monospace; font-weight: bold; color: #fde68a; margin-bottom: 4px;">${esc(m.no_anggota)}</div>
-                            <div style="color: #a7f3d0; font-size: 9px; margin-bottom: 1px;">Jabatan</div>
-                            <div style="color: white; font-weight: bold; margin-bottom: 4px;">${esc(m.role)}</div>
-                            <div style="color: #a7f3d0; font-size: 9px; margin-bottom: 1px;">Wilayah / Loper</div>
-                            <div style="color: white; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(m.loper || '-')}</div>
-                        </div>
-                        <div style="background: white; padding: 5px; border-radius: 8px; flex-shrink: 0;" id="qr-print-${m.id}"></div>
-                    </div>
-                </div>`;
-            }).join('')}
-        </div>
-        <p style="text-align: center; font-size: 12px; color: #64748b; margin-top: 20px;">Scan QR Code menggunakan kamera HP untuk login otomatis.</p>
-    `;
-
-    members.forEach(m => {
-        const el = document.getElementById(`qr-print-${m.id}`);
-        if (el) {
-            const url = `${location.origin}${location.pathname}?t=${m.qr_secret}`;
-            new QRCode(el, { text: url, width: 70, height: 70 });
-        }
-    });
-
-    area.classList.remove('hidden');
-    setTimeout(() => {
-        window.print();
-        setTimeout(() => { area.classList.add('hidden'); area.innerHTML = ''; }, 1000);
-    }, 500);
-}
-
-// ========== FINANCE ==========
-async function loadFinance() {
-    const { data, error } = await supabase.from('finance').select('*').order('created_at', { ascending: false });
-    if (error) return toast(error.message, 'error');
-    renderFinanceList(data || []);
-    renderMemberFinanceView(data || []);
-}
-
-async function loadFinanceForMember() {
-    const { data } = await supabase.from('finance').select('type, amount');
-    renderMemberFinanceView(data || []);
-}
-
 async function handleTransaction(e) {
     e.preventDefault();
     const type = document.getElementById('trx-type').value;
     const amount = Number(document.getElementById('trx-amount').value);
-    const description = document.getElementById('trx-desc').value.trim();
-    if (!amount || amount <= 0) return toast('Jumlah > 0', 'error');
-
-    const { error } = await supabase.from('finance').insert({ type, amount, description });
-    if (error) return toast(error.message, 'error');
-
-    e.target.reset();
-    await loadFinance();
-    toast('Transaksi dicatat');
+    const desc = document.getElementById('trx-desc').value.trim();
+    const fileInput = document.getElementById('trx-proof');
+    if (!amount || amount <= 0) { toast('Jumlah harus lebih dari 0', 'error'); return; }
+    const save = async (proofData) => {
+        dbFinance.push({ id: Date.now().toString(), type, amount, desc, proof: proofData });
+        await pushAllToCloud();
+        renderFinanceList(); renderMemberFinanceView();
+        e.target.reset();
+        toast('Transaksi dicatat');
+    };
+    if (fileInput.files && fileInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = ev => save(ev.target.result);
+        reader.readAsDataURL(fileInput.files[0]);
+    } else {
+        await save('');
+    }
 }
 
 async function deleteTransaction(id) {
     if (!confirm('Hapus transaksi ini?')) return;
-    const { error } = await supabase.from('finance').delete().eq('id', id);
-    if (error) return toast(error.message, 'error');
-    await loadFinance();
+    dbFinance = dbFinance.filter(t => t.id !== id);
+    await pushAllToCloud();
+    renderFinanceList(); renderMemberFinanceView();
     toast('Transaksi dihapus');
 }
 
-function renderFinanceList(finance) {
+function calcTotals() {
+    let income = 0, expense = 0;
+    dbFinance.forEach(t => {
+        const amt = Number(t.amount) || 0;
+        if (t.type === 'Masuk') income += amt; else expense += amt;
+    });
+    return { income, expense, balance: income - expense };
+}
+
+function renderFinanceList() {
     const c = document.getElementById('finance-list-container');
-    if (!finance.length) {
+    if (!dbFinance.length) {
         c.innerHTML = `<div class="text-center py-8 text-slate-400"><i class="fa-solid fa-receipt text-3xl mb-2 block"></i><p class="text-xs">Belum ada catatan kas.</p></div>`;
     } else {
-        c.innerHTML = finance.map(t => `
+        c.innerHTML = dbFinance.map(t => `
             <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100/80 rounded-2xl gap-2">
                 <div class="min-w-0">
                     <span class="text-[10px] font-black px-2 py-0.5 rounded-md ${t.type === 'Masuk' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">${esc(t.type)}</span>
-                    <span class="font-bold text-xs text-slate-800 ml-1.5">${esc(t.description)}</span>
+                    <span class="font-bold text-xs text-slate-800 ml-1.5">${esc(t.desc)}</span>
                     <p class="text-[11px] font-extrabold text-slate-700 mt-0.5">${fmtRp(t.amount)}</p>
                 </div>
                 <button onclick="deleteTransaction('${t.id}')" class="text-rose-500 text-xs px-2 py-1.5 font-bold hover:bg-rose-50 rounded-lg transition shrink-0"><i class="fa-solid fa-trash"></i></button>
             </div>
         `).join('');
     }
-    const { income, expense, balance } = finance.reduce((acc, t) => {
-        const amt = Number(t.amount) || 0;
-        if (t.type === 'Masuk') acc.income += amt; else acc.expense += amt;
-        acc.balance = acc.income - acc.expense;
-        return acc;
-    }, { income: 0, expense: 0, balance: 0 });
+    const { income, expense, balance } = calcTotals();
     document.getElementById('summary-income').innerText = fmtRp(income);
     document.getElementById('summary-expense').innerText = fmtRp(expense);
     document.getElementById('summary-balance').innerText = fmtRp(balance);
 }
 
-function renderMemberFinanceView(finance) {
-    const { income, expense, balance } = finance.reduce((acc, t) => {
-        const amt = Number(t.amount) || 0;
-        if (t.type === 'Masuk') acc.income += amt; else acc.expense += amt;
-        acc.balance = acc.income - acc.expense;
-        return acc;
-    }, { income: 0, expense: 0, balance: 0 });
+function renderMemberCard() {
+    document.getElementById('member-card-name').innerText = currentUser.name;
+    document.getElementById('member-card-role').innerText = currentUser.role;
+    document.getElementById('member-card-no').innerText = currentUser.noAnggota || 'RMS-001';
+    document.getElementById('member-card-loper').innerText = currentUser.loper || '-';
+    
+    const qrContainer = document.getElementById('qrcode-container');
+    qrContainer.innerHTML = '';
+
+    // Menyusun URL persis dan lengkap dengan awalan https://
+    const host = window.location.host;
+    const path = window.location.pathname;
+    const fullUrl = `https://${host}${path}?nik=${encodeURIComponent(currentUser.nik)}`;
+
+    new QRCode(qrContainer, {
+        text: fullUrl,
+        width: 130, 
+        height: 130,
+        correctLevel: QRCode.CorrectLevel.H
+    });
+}
+
+function renderMemberFinanceView() {
+    const { income, expense, balance } = calcTotals();
     document.getElementById('member-summary-income').innerText = fmtRp(income);
     document.getElementById('member-summary-expense').innerText = fmtRp(expense);
     document.getElementById('member-summary-balance').innerText = fmtRp(balance);
 }
 
-// ========== ADMINS ==========
-async function loadAdmins() {
-    const { data } = await supabase.from('profiles').select('user_id, role').eq('role', 'admin');
-    const c = document.getElementById('admins-list-container');
-    if (!data || !data.length) {
-        c.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Belum ada admin.</p>`;
-        return;
-    }
-    c.innerHTML = data.map(a => `
-        <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100 rounded-2xl gap-2">
-            <p class="text-[11px] text-slate-500 truncate">User ID: ${esc(a.user_id)}</p>
+function renderMemberListForMembers() {
+    const c = document.getElementById('member-view-members-list');
+    const total = document.getElementById('member-total-count');
+    if (total) total.innerText = `Total: ${dbMembers.length}`;
+    if (!c) return;
+    if (!dbMembers.length) { c.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Belum ada anggota.</p>`; return; }
+    c.innerHTML = dbMembers.map((m, i) => `
+        <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100/80 rounded-2xl gap-2">
+            <div class="flex items-center space-x-2.5 min-w-0">
+                <span class="w-6 h-6 bg-rms-green text-amber-300 rounded-lg flex items-center justify-center text-[10px] font-black shadow-sm shrink-0">${i + 1}</span>
+                <h4 class="font-bold text-xs text-slate-800 truncate">${esc(m.name)} <span class="text-[10px] text-slate-400">(${esc(m.noAnggota || 'RMS-000')})</span></h4>
+            </div>
+            <span class="text-[10px] bg-amber-100 text-amber-900 border border-amber-200/60 font-bold px-2 py-0.5 rounded-lg shrink-0">${esc(m.role)}</span>
         </div>
     `).join('');
 }
 
-// ========== REALTIME ==========
-function subscribeRealtime() {
-    if (realtimeChannel) supabase.removeChannel(realtimeChannel);
-    realtimeChannel = supabase
-        .channel('rms-realtime')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, () => {
-            if (currentProfile?.role === 'admin') loadMembers();
-            else if (currentUser) loadMemberListForMembers();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'finance' }, () => {
-            if (currentProfile?.role === 'admin') loadFinance();
-            else if (currentUser) loadFinanceForMember();
-        })
-        .subscribe();
-}
-
-// ========== EXPORT REPORTS ==========
 function exportMemberReport() {
     const area = document.getElementById('print-area');
-    supabase.from('members').select('*').order('no_anggota').then(({ data }) => {
-        const rows = (data || []).map((m, i) => `
-            <tr><td>${i + 1}</td><td>${esc(m.no_anggota)}</td><td>${esc(m.name)}</td><td>${esc(m.nik)}</td><td>${esc(m.role)}</td><td>${esc(m.phone || '-')}</td><td>${esc(m.loper || '-')}</td></tr>
-        `).join('');
-        area.innerHTML = `
-            <h1>Laporan Daftar Anggota</h1>
-            <p class="report-meta">Kelompok Tani Riau Mandiri Sejahtera (RMS) · Dicetak ${new Date().toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' })}</p>
-            <table>
-                <thead><tr><th>#</th><th>No. Anggota</th><th>Nama</th><th>NIK</th><th>Jabatan</th><th>Telepon</th><th>Wilayah</th></tr></thead>
-                <tbody>${rows}</tbody>
-                <tfoot><tr class="total-row"><td colspan="7">Total: ${data.length} anggota</td></tr></tfoot>
-            </table>`;
-        area.classList.remove('hidden');
-        window.print();
-        setTimeout(() => { area.classList.add('hidden'); area.innerHTML = ''; }, 1000);
-    });
+    const rows = dbMembers.map((m, i) => `
+        <tr><td>${i + 1}</td><td>${esc(m.noAnggota || 'RMS-000')}</td><td>${esc(m.name)}</td><td>${esc(m.nik)}</td><td>${esc(m.role)}</td><td>${esc(m.phone || '-')}</td><td>${esc(m.loper || '-')}</td></tr>
+    `).join('');
+    area.innerHTML = `
+        <h1>Laporan Daftar Anggota</h1>
+        <p class="report-meta">Kelompok Tani Riau Mandiri Sejahtera (RMS) · Dicetak ${new Date().toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' })}</p>
+        <table>
+            <thead><tr><th>#</th><th>No. Anggota</th><th>Nama</th><th>NIK</th><th>Jabatan</th><th>Telepon</th><th>Wilayah</th></tr></thead>
+            <tbody>${rows}</tbody>
+            <tfoot><tr class="total-row"><td colspan="7">Total: ${dbMembers.length} anggota</td></tr></tfoot>
+        </table>`;
+    area.classList.remove('hidden');
+    window.print();
+    setTimeout(() => { area.classList.add('hidden'); area.innerHTML = ''; }, 1000);
 }
 
 function exportFinanceReport() {
     const area = document.getElementById('print-area');
-    supabase.from('finance').select('*').order('created_at', { ascending: true }).then(({ data }) => {
-        const rows = (data || []).map((t, i) => `
-            <tr><td>${i + 1}</td><td>${esc(t.type)}</td><td>${esc(t.description)}</td><td style="text-align:right">${fmtRp(t.amount)}</td></tr>
-        `).join('');
-        const { income, expense, balance } = (data || []).reduce((acc, t) => {
-            const amt = Number(t.amount) || 0;
-            if (t.type === 'Masuk') acc.income += amt; else acc.expense += amt;
-            acc.balance = acc.income - acc.expense;
-            return acc;
-        }, { income: 0, expense: 0, balance: 0 });
-        
-        area.innerHTML = `
-            <h1>Laporan Keuangan Kas</h1>
-            <p class="report-meta">Kelompok Tani Riau Mandiri Sejahtera (RMS) · Dicetak ${new Date().toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' })}</p>
-            <table>
-                <thead><tr><th>#</th><th>Jenis</th><th>Keterangan</th><th style="text-align:right">Jumlah</th></tr></thead>
-                <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:#94a3b8">Belum ada transaksi</td></tr>'}</tbody>
-                <tfoot>
-                    <tr class="total-row"><td colspan="3">Total Pemasukan</td><td style="text-align:right">${fmtRp(income)}</td></tr>
-                    <tr class="total-row"><td colspan="3">Total Pengeluaran</td><td style="text-align:right">${fmtRp(expense)}</td></tr>
-                    <tr class="total-row"><td colspan="3">Saldo Akhir</td><td style="text-align:right">${fmtRp(balance)}</td></tr>
-                </tfoot>
-            </table>`;
-        area.classList.remove('hidden');
-        window.print();
-        setTimeout(() => { area.classList.add('hidden'); area.innerHTML = ''; }, 1000);
-    });
+    const rows = dbFinance.map((t, i) => `
+        <tr><td>${i + 1}</td><td>${esc(t.type)}</td><td>${esc(t.desc)}</td><td style="text-align:right">${fmtRp(t.amount)}</td></tr>
+    `).join('');
+    const { income, expense, balance } = calcTotals();
+    area.innerHTML = `
+        <h1>Laporan Keuangan Kas</h1>
+        <p class="report-meta">Kelompok Tani Riau Mandiri Sejahtera (RMS) · Dicetak ${new Date().toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' })}</p>
+        <table>
+            <thead><tr><th>#</th><th>Jenis</th><th>Keterangan</th><th style="text-align:right">Jumlah</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:#94a3b8">Belum ada transaksi</td></tr>'}</tbody>
+            <tfoot>
+                <tr class="total-row"><td colspan="3">Total Pemasukan</td><td style="text-align:right">${fmtRp(income)}</td></tr>
+                <tr class="total-row"><td colspan="3">Total Pengeluaran</td><td style="text-align:right">${fmtRp(expense)}</td></tr>
+                <tr class="total-row"><td colspan="3">Saldo Akhir</td><td style="text-align:right">${fmtRp(balance)}</td></tr>
+            </tfoot>
+        </table>`;
+    area.classList.remove('hidden');
+    window.print();
+    setTimeout(() => { area.classList.add('hidden'); area.innerHTML = ''; }, 1000);
 }
