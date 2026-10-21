@@ -35,7 +35,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- Library Supabase & QR Code Local Generator -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -468,7 +467,6 @@
             { id: '2', name: 'Arnius Putra', email: 'arniusputra6895@gmail.com', pass: '@Simarmata28' }
         ];
         
-        // Data Anggota Bawaan menggunakan Nomor Anggota Unik acak
         let dbMembers = [
             { id: '1', noAnggota: 'RMS-849201', name: 'Arnius Simarmata', nik: '1404142801980001', role: 'Ketua Kelompok Tani', phone: '082383301041', loper: 'Pekanbaru / Indragiri' }
         ];
@@ -487,7 +485,6 @@
             return 'Rp ' + (Number(n) || 0).toLocaleString('id-ID');
         }
 
-        // Fungsi membuat Kode Anggota Unik 6 Angka Acak (Misal: RMS-583921)
         function generateUniqueMemberNo() {
             let uniqueNo = '';
             let exists = true;
@@ -516,7 +513,6 @@
         window.onload = async function () {
             await syncCloudData();
 
-            // MENDETEKSI NOMOR ANGGOTA UNIK DARI PARAMETER URL (?no_anggota=RMS-XXXXXX)
             const urlParams = new URLSearchParams(window.location.search);
             const scanNoAnggota = urlParams.get('no_anggota');
 
@@ -626,7 +622,6 @@
             }
         }
 
-        // LOGIN DENGAN NOMOR ANGGOTA UNIK
         function handleLoginMember(e) {
             e.preventDefault();
             const memberNoInput = document.getElementById('member-no-id').value.trim().toUpperCase();
@@ -775,7 +770,6 @@
                 if (i !== -1) dbMembers[i] = { ...dbMembers[i], name, nik, role: finalRole, phone, loper };
                 toast('Data anggota diperbarui');
             } else {
-                // GENERASI KODE ANGGOTA UNIK SECARA OTOMATIS
                 const newMemberNo = generateUniqueMemberNo();
                 dbMembers.push({ id: Date.now().toString(), noAnggota: newMemberNo, name, nik, role: finalRole, phone, loper });
                 toast(`Anggota berhasil didaftarkan (${newMemberNo})`);
@@ -840,7 +834,7 @@
                     </div>
                     <div class="flex items-center space-x-1 shrink-0">
                         <button onclick="editMember('${m.id}')" class="text-amber-700 text-xs px-2 py-1.5 font-bold hover:bg-amber-100 rounded-lg transition"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="deleteMember('${m.id}')" class="text-rose-500 text-xs px-2 py-1.5 font-bold hover:bg-rose-50 rounded-lg transition"><i class="fa-solid fa-trash"></i></button>
+                        <button onclick="deleteMember('${m.id}')" class="text-rose-500 text-xs px-2 py-1.5 font-bold hover:bg-rose-50 rounded-lg shrink-0"><i class="fa-solid fa-trash"></i></button>
                     </div>
                 </div>
             `).join('');
@@ -899,7 +893,6 @@
             document.getElementById('summary-balance').innerText = fmtRp(balance);
         }
 
-        // GENERASI TAMPILAN KARTU DAN QR CODE UNIK ANGGOTA
         function renderMemberCard() {
             document.getElementById('member-card-name').innerText = currentUser.name || '-';
             document.getElementById('member-card-role').innerText = currentUser.role || '-';
@@ -910,7 +903,6 @@
             if (!container) return;
             container.innerHTML = '';
 
-            // QR CODE MENYIMPAN LINK BERISI NOMOR ANGGOTA UNIK (AMAN TANPA NIK)
             const noAnggota = currentUser.noAnggota || 'RMS-849201';
             const targetUrl = "https://amazing-capybara-c4a807.netlify.app/?no_anggota=" + encodeURIComponent(noAnggota);
 
