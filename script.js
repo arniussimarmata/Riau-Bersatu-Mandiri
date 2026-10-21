@@ -43,6 +43,7 @@ function toast(msg, type = 'success') {
 }
 
 window.onload = async function () {
+    // Membaca parameter NIK langsung dari URL saat QR Code dipindai
     const urlParams = new URLSearchParams(window.location.search);
     const scanNik = urlParams.get('nik');
 
@@ -478,7 +479,7 @@ function renderMemberCard() {
     const qrContainer = document.getElementById('qrcode-container');
     qrContainer.innerHTML = '';
 
-    // Menggunakan API QR Server eksternal agar QR yang dihasilkan berupa gambar URL murni yang langsung dikenali Google Lens
+    // Menghasilkan Gambar QR URL Murni yang langsung dikenali Kamera HP / Google Lens sebagai Tautan Web
     const currentDomain = window.location.origin;
     const targetUrl = `${currentDomain}/?nik=${encodeURIComponent(currentUser.nik)}`;
     const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(targetUrl)}`;
@@ -550,7 +551,7 @@ function exportFinanceReport() {
                 <tr class="total-row"><td colspan="3">Saldo Akhir</td><td style="text-align:right">${fmtRp(balance)}</td></tr>
             </tfoot>
         </table>`;
-    area.classList.add('hidden');
+    area.classList.remove('hidden');
     window.print();
     setTimeout(() => { area.classList.add('hidden'); area.innerHTML = ''; }, 1000);
 }
