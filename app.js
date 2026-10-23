@@ -1,13 +1,15 @@
 /* =========================================
-   KONFIGURASI SUPABASE & GLOBAL
+   KONFIGURASI & GLOBAL
    ========================================= */
-const SUPABASE_URL = 'https://PROJECT_ID.supabase.co'; // GANTI DENGAN URL SUPABASE KAMU
-const SUPABASE_ANON_KEY = 'EY...'; // GANTI DENGAN ANON KEY KAMU
+// GANTI DENGAN URL DAN KEY DARI SUPABASE KAMU
+const SUPABASE_URL = 'https://xxxxxx.supabase.co'; 
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; 
 const PUBLIC_URL = window.location.origin + window.location.pathname;
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let allMembers = [];
 let currentUser = null;
+let myChart = null;
 
 // Helper Notifikasi
 function toast(msg, type = 'success') {
@@ -19,8 +21,190 @@ function toast(msg, type = 'success') {
     setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
 }
 
+function switchLoginTab(tab) {
+    document.getElementById('tab-btn-admin').classList.toggle('active', tab === 'admin');
+    document.getElementById('tab-btn-member').classList.toggle('active', tab === 'member');
+    document.getElementById('form-login-admin').classList.toggle('hidden', tab !== 'admin');
+    document.getElementById('form-login-member').classList.toggle('hidden', tab !== 'member');
+}
+
+function switchAdminTab(tab) {
+    document.getElementById('admin-tab-members').classList.toggle('active', tab === 'members');
+    document.getElementById('admin-tab-finance').classList.toggle('active', tab === 'finance');
+    document.getElementById('content-admin-members').classList.toggle('hidden', tab !== 'members');
+    document.getElementById('content-admin-finance').classList.toggle('hidden', tab !== 'finance');
+}
+
 /* =========================================
-   FUNGSI RENDER E-CARD CANVAS (SESUAI GAMBAR)
+   AUTH & LOGIN
+   ========================================= */
+async function handleLoginAdmin(e) {
+    e.preventDefault();
+    const email = document.getElementById('admin-email').value;
+    const pass = document.getElementById('admin-pass').value;
+    const btn = e.target.querySelector('button');
+    
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memeriksa...';
+    btn.disabled = true;
+
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    
+    btn.innerHTML = 'Masuk Pengurus';
+    btn.disabled = false;
+
+    if (error) return toast(error.message, 'error');
+    
+    currentUser = { type: 'admin', ...data.user };
+    document.getElementById('view-login').classList.add('hidden');
+    document.getElementById('view-admin-dashboard').classList.remove('hidden');
+    document.getElementById('user-info-section').classList.remove('hidden');
+    document.getElementById('nav-username').innerText = 'Admin';
+    
+    loadMembers();
+    toast('Login berhasil');
+}
+
+async function handleLoginMember(e) {
+    e.preventDefault();
+    const no = document.getElementById('member-no-id').value;
+    const pin = document.getElementById('member-pin').value;
+    const btn = e.target.querySelector('button');
+
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memeriksa...';
+    btn.disabled = true;
+
+    // Memanggil RPC yang ada di SQL
+    const { data, error } = await sb.rpc('member_login', { p_no: no, p_pin: pin });
+    
+    btn.innerHTML = 'Masuk Anggota';
+    btn.disabled = false;
+
+    if (error || !data) return toast('Nomor anggota atau PIN salah', 'error');
+    
+    currentUser = { type: 'member', ...data };
+    localStorage.setItem('rms_token', data.token);
+    
+    document.getElementById('view-login').classList.add('hidden');
+    document.getElementById('view-member-dashboard').classList.remove('hidden');
+    document.getElementById('user-info-section').classList.remove('hidden');
+    document.getElementById('nav-username').innerText = data.name;
+    
+    // Render E-Card untuk tampilan Member
+    renderMemberDashboard(data);
+    toast('Login berhasil');
+}
+
+function logout() {
+    localStorage.removeItem('rms_token');
+    window.location.reload();
+}
+
+/* =========================================
+   MANAJEMEN ANGGOTA & PDF
+   ========================================= */
+async function loadMembers() {
+    const { data, error } = await sb.from('members_public').select('*').order('name');
+    if (error) return toast('Gagal memuat data anggota', 'error');
+    
+    allMembers = data || [];
+    
+    // Isi Dropdown E-Card
+    const sel = document.getElementById('select-single-member-ecard');
+    sel.innerHTML = '<option value="">-- Pilih Anggota --</option>';
+    allMembers.forEach(m => {
+        sel.innerHTML += `<option value="${m.id}">${m.name} (${m.no_anggota})</option>`;
+    });
+
+    // Render List Anggota
+    const c = document.getElementById('members-list-container');
+    c.innerHTML = allMembers.length === 0 ? '<p class="text-xs text-slate-500">Belum ada data.</p>' : '';
+    allMembers.forEach(m => {
+        c.innerHTML += `
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center mb-2">
+                <div>
+                    <p class="font-bold text-sm text-emerald-900">${m.name}</p>
+                    <p class="text-xs text-slate-500">${m.no_anggota} • ${m.role}</p>
+                </div>
+                <button onclick="downloadCardById('${m.id}')" class="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 px-3 py-1.5 rounded-lg text-xs font-bold transition">
+                    <i class="fa-solid fa-download"></i> PDF
+                </button>
+            </div>
+        `;
+    });
+}
+
+function renderMemberDashboard(m) {
+    document.getElementById('member-card-name').innerText = m.name;
+    document.getElementById('member-card-role').innerText = m.role;
+    document.getElementById('member-card-no').innerText = m.no_anggota;
+    document.getElementById('member-card-loper').innerText = m.loper || '-';
+}
+
+async function downloadSelectedSingleECard() {
+    const id = document.getElementById('select-single-member-ecard').value;
+    if (!id) return toast('Pilih anggota terlebih dahulu!', 'warn');
+    
+    const m = allMembers.find(x => x.id == id);
+    if (!m) return toast('Data tidak ditemukan', 'error');
+
+    toast('Menyiapkan PDF...');
+    try {
+        const canvas = await buildCardCanvas(m);
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width, canvas.height] });
+
+        pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+        pdf.save(`E-Card_${m.no_anggota}_${m.name}.pdf`);
+        toast('PDF berhasil diunduh');
+    } catch (err) {
+        toast('Gagal membuat PDF', 'error');
+        console.error(err);
+    }
+}
+
+async function downloadCardById(id) {
+    document.getElementById('select-single-member-ecard').value = id;
+    downloadSelectedSingleECard();
+}
+
+async function downloadAllECardsZip() {
+    if (allMembers.length === 0) return toast('Belum ada data anggota', 'warn');
+    toast(`Memproses ${allMembers.length} E-Card... Mohon tunggu.`);
+    
+    const { jsPDF } = window.jspdf;
+    const zip = new JSZip();
+    
+    for (let i = 0; i < allMembers.length; i++) {
+        const m = allMembers[i];
+        try {
+            const canvas = await buildCardCanvas(m);
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            
+            // JPG
+            const imgBase64 = imgData.split('base64,')[1];
+            zip.file(`${m.no_anggota}_${m.name}.jpg`, imgBase64, { base64: true });
+
+            // PDF
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width, canvas.height] });
+            pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
+            zip.file(`${m.no_anggota}_${m.name}.pdf`, pdf.output('blob'));
+        } catch (e) {
+            console.error('Gagal render:', m.name);
+        }
+    }
+
+    const content = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(content);
+    a.download = `E-Cards_Massal_RMS.zip`;
+    a.click();
+    toast('ZIP Massal berhasil diunduh');
+}
+
+/* =========================================
+   E-CARD CANVAS RENDERER (KODE ASLI KAMU)
    ========================================= */
 function rrect(ctx, x, y, w, h, r) {
     ctx.beginPath();
@@ -36,7 +220,7 @@ function loadImg(src) {
     return new Promise(res => {
         if (!src) return res(null);
         const i = new Image();
-        i.crossOrigin = "Anonymous"; // Penting untuk export PDF
+        i.crossOrigin = "Anonymous";
         i.onload = () => res(i);
         i.onerror = () => res(null);
         i.src = src;
@@ -52,76 +236,64 @@ function fitFont(ctx, text, weight, size, family, maxW) {
     }
 }
 
-// Fungsi pembuat QR Code base64 (tanpa library tambahan, murni API)
+// QR Code via API Publik (Aman untuk Canvas Export)
 function qrDataUrl(text, size = 430) {
-    return new Promise(res => {
-        const url = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}`;
-        res(url);
-    });
+    return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}`;
 }
 
 async function buildCardCanvas(m) {
     const F = '"Plus Jakarta Sans", "Segoe UI", Arial, sans-serif';
+    try { await document.fonts.load(`900 36px "Plus Jakarta Sans"`); } catch (e) {}
+
     const [logoImg, qrImg] = await Promise.all([
         loadImg('./logo.webp'),
-        qrDataUrl(`${PUBLIC_URL}?t=${m.token}`, 430).then(loadImg)
+        loadImg(qrDataUrl(`${PUBLIC_URL}?t=${m.token}`, 430))
     ]);
 
     const M = 30, W = 1080, H = 1540, PAD = 48;
     const canvas = document.createElement('canvas');
-    canvas.width = W + M * 2;
-    canvas.height = H + M * 2;
+    canvas.width = W + M * 2; canvas.height = H + M * 2;
     const ctx = canvas.getContext('2d');
 
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.translate(M, M);
-    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.translate(M, M); ctx.textBaseline = 'middle';
 
-    // Background Kartu
     const g = ctx.createLinearGradient(0, 0, W, H);
     g.addColorStop(0, '#1E5E3A'); g.addColorStop(0.5, '#0F3D24'); g.addColorStop(1, '#1E5E3A');
-    rrect(ctx, 0, 0, W, H, 64);
-    ctx.fillStyle = g; ctx.fill();
+    rrect(ctx, 0, 0, W, H, 64); ctx.fillStyle = g; ctx.fill();
     ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(252,211,77,0.35)'; ctx.stroke();
 
-    // Logo
     const lx = PAD + 72, ly = 139;
     ctx.beginPath(); ctx.arc(lx, ly, 72, 0, Math.PI * 2);
     ctx.fillStyle = '#ffffff'; ctx.fill();
     ctx.lineWidth = 4; ctx.strokeStyle = '#FCD34D'; ctx.stroke();
     if (logoImg) {
-        ctx.save();
-        ctx.beginPath(); ctx.arc(lx, ly, 66, 0, Math.PI * 2); ctx.clip();
+        ctx.save(); ctx.beginPath(); ctx.arc(lx, ly, 66, 0, Math.PI * 2); ctx.clip();
         const d = 132, sc = Math.max(d / logoImg.width, d / logoImg.height);
         const w = logoImg.width * sc, h = logoImg.height * sc;
-        ctx.drawImage(logoImg, lx - w / 2, ly - h / 2, w, h);
-        ctx.restore();
+        ctx.drawImage(logoImg, lx - w / 2, ly - h / 2, w, h); ctx.restore();
     }
 
-    // Teks Header
     ctx.textAlign = 'left'; ctx.fillStyle = '#FCD34D'; ctx.font = `800 28px ${F}`;
     ctx.fillText('KELOMPOK TANI', 236, 112);
     ctx.fillStyle = '#ffffff'; fitFont(ctx, 'RIAU MANDIRI SEJAHTERA', 900, 38, F, 570);
     ctx.fillText('RIAU MANDIRI SEJAHTERA', 236, 160);
 
-    // Badge E-CARD
     rrect(ctx, W - PAD - 190, ly - 36, 190, 72, 36);
     ctx.fillStyle = '#FBBF24'; ctx.fill();
     ctx.fillStyle = '#052e16'; ctx.font = `900 30px ${F}`; ctx.textAlign = 'center';
     ctx.fillText('E-CARD', W - PAD - 95, ly + 1);
 
-    // Garis Pemisah
     ctx.beginPath(); ctx.moveTo(PAD, 252); ctx.lineTo(W - PAD, 252);
     ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.stroke();
 
-    // Data Anggota
     const rows = [
         ['Nama Anggota', m.name || '-', 'name'],
         ['Jabatan', m.role || '-', 'pill'],
         ['Nomor Anggota Unik', m.no_anggota || '-', 'mono'],
         ['Wilayah', m.loper || '-', 'plain']
     ];
+    
     rows.forEach(([label, val, kind], i) => {
         const y = 335 + i * 86;
         ctx.textAlign = 'left'; ctx.font = `500 34px ${F}`; ctx.fillStyle = '#A7F3D0';
@@ -144,20 +316,16 @@ async function buildCardCanvas(m) {
         }
     });
 
-    // Kotak QR Putih
     const by = 676, bh = 800;
-    rrect(ctx, PAD, by, W - PAD * 2, bh, 56);
-    ctx.fillStyle = '#ffffff'; ctx.fill();
+    rrect(ctx, PAD, by, W - PAD * 2, bh, 56); ctx.fillStyle = '#ffffff'; ctx.fill();
     ctx.lineWidth = 6; ctx.strokeStyle = '#FCD34D'; ctx.stroke();
 
-    // Judul QR
     const title = 'QR CODE IDENTITAS ANGGOTA';
     ctx.font = `800 32px ${F}`; const tw = ctx.measureText(title).width;
     const startX = (W - (tw + 52)) / 2;
     rrect(ctx, startX, by + 76 - 14, 28, 28, 6); ctx.fillStyle = '#F59E0B'; ctx.fill();
     ctx.textAlign = 'left'; ctx.fillStyle = '#1E5E3A'; ctx.fillText(title, startX + 52, by + 76);
 
-    // Gambar QR
     const fs = 510, fx = (W - fs) / 2, fy = by + 112;
     rrect(ctx, fx, fy, fs, fs, 40); ctx.fillStyle = '#ffffff'; ctx.fill();
     ctx.lineWidth = 3; ctx.strokeStyle = '#E2E8F0'; ctx.stroke();
@@ -167,7 +335,6 @@ async function buildCardCanvas(m) {
         ctx.imageSmoothingEnabled = true;
     }
 
-    // Footer QR
     ctx.textAlign = 'center'; ctx.fillStyle = '#64748b'; ctx.font = `500 28px ${F}`;
     ctx.fillText('Scan QR Code di atas dengan Kamera / Google Lens untuk', W / 2, fy + fs + 52);
     ctx.fillText('masuk otomatis.', W / 2, fy + fs + 90);
@@ -177,112 +344,18 @@ async function buildCardCanvas(m) {
     return canvas;
 }
 
-/* =========================================
-   FUNGSI DOWNLOAD PDF (SATUAN & MASSAL)
-   ========================================= */
-async function downloadSelectedSingleECard() {
-    const id = document.getElementById('select-single-member-ecard').value;
-    if (!id) return toast('Pilih anggota terlebih dahulu!', 'warn');
-    
-    const m = allMembers.find(x => x.id == id);
-    if (!m) return toast('Data tidak ditemukan', 'error');
-
-    toast('Menyiapkan PDF...');
-    const canvas = await buildCardCanvas(m);
-    const imgData = canvas.toDataURL('image/jpeg', 0.95);
-    
-    // Buat PDF ukuran F4 / Custom menyesuaikan rasio gambar
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'px',
-        format: [canvas.width, canvas.height]
-    });
-
-    pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
-    pdf.save(`E-Card_${m.no_anggota}_${m.name}.pdf`);
-    toast('PDF berhasil diunduh');
-}
-
-async function downloadAllECardsZip() {
-    if (allMembers.length === 0) return toast('Belum ada data anggota', 'warn');
-    toast(`Memproses ${allMembers.length} E-Card... Mohon tunggu.`);
-    
-    const { jsPDF } = window.jspdf;
-    const zip = new JSZip();
-    
-    for (let i = 0; i < allMembers.length; i++) {
-        const m = allMembers[i];
-        const canvas = await buildCardCanvas(m);
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        
-        // 1. Simpan sebagai JPG (ringan & cepat)
-        const imgBase64 = imgData.split('base64,')[1];
-        zip.file(`${m.no_anggota}_${m.name}.jpg`, imgBase64, { base64: true });
-
-        // 2. Simpan sebagai PDF
-        const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'px',
-            format: [canvas.width, canvas.height]
-        });
-        pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
-        zip.file(`${m.no_anggota}_${m.name}.pdf`, pdf.output('blob'));
+// Auto Check Login Saat Dimuat
+window.addEventListener('DOMContentLoaded', async () => {
+    const token = localStorage.getItem('rms_token');
+    if (token) {
+        const { data } = await sb.rpc('member_login_token', { p_token: token });
+        if (data) {
+            currentUser = { type: 'member', ...data };
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('view-member-dashboard').classList.remove('hidden');
+            document.getElementById('user-info-section').classList.remove('hidden');
+            document.getElementById('nav-username').innerText = data.name;
+            renderMemberDashboard(data);
+        }
     }
-
-    const content = await zip.generateAsync({ type: 'blob' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(content);
-    a.download = `E-Cards_Massal_RMS.zip`;
-    a.click();
-    toast('ZIP Massal berhasil diunduh');
-}
-
-/* =========================================
-   FUNGSI MEMUAT DATA (DUMMY / SESUAIKAN DB)
-   ========================================= */
-// Fungsi ini mengambil data dari Supabase tabel members_public
-async function loadMembers() {
-    const { data, error } = await sb.from('members_public').select('*').order('name');
-    if (!error && data) {
-        allMembers = data;
-        renderMemberSelect();
-        renderMemberList();
-    }
-}
-
-function renderMemberSelect() {
-    const sel = document.getElementById('select-single-member-ecard');
-    sel.innerHTML = '<option value="">-- Pilih Anggota --</option>';
-    allMembers.forEach(m => {
-        sel.innerHTML += `<option value="${m.id}">${m.name} (${m.no_anggota})</option>`;
-    });
-}
-
-function renderMemberList() {
-    const c = document.getElementById('members-list-container');
-    c.innerHTML = '';
-    allMembers.forEach(m => {
-        c.innerHTML += `
-            <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center">
-                <div>
-                    <p class="font-bold text-sm text-emerald-900">${m.name}</p>
-                    <p class="text-xs text-slate-500">${m.no_anggota} • ${m.role}</p>
-                </div>
-                <button onclick="downloadCardById('${m.id}')" class="text-blue-600 hover:text-blue-800 text-sm font-bold p-2">
-                    <i class="fa-solid fa-download"></i>
-                </button>
-            </div>
-        `;
-    });
-}
-
-async function downloadCardById(id) {
-    document.getElementById('select-single-member-ecard').value = id;
-    downloadSelectedSingleECard();
-}
-
-// Panggil saat halaman dimuat
-document.addEventListener('DOMContentLoaded', () => {
-    loadMembers();
 });
