@@ -37,6 +37,8 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -136,7 +138,7 @@
                     </button>
                 </form>
 
-                <!-- LOGIN ANGGOTA DENGAN NOMOR ANGGOTA UNIK -->
+                <!-- LOGIN ANGGOTA -->
                 <form id="form-login-member" onsubmit="handleLoginMember(event)" class="space-y-4 hidden">
                     <div>
                         <label class="block text-xs font-semibold text-slate-700 mb-1.5">Nomor Anggota Unik</label>
@@ -171,7 +173,14 @@
                         <h3 id="form-member-title" class="font-extrabold text-sm sm:text-base text-rms-green">
                             <i class="fa-solid fa-user-plus mr-1"></i> Pendaftaran Anggota Baru
                         </h3>
+                        <!-- OCR SCANNER KTP / TULISAN TANGAN -->
+                        <label class="cursor-pointer bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition shadow flex items-center gap-1.5">
+                            <i class="fa-solid fa-camera"></i> Scan KTP / Tangan
+                            <input type="file" id="ktp-scanner-input" accept="image/*" class="hidden" onchange="scanKTPImage(event)">
+                        </label>
                     </div>
+
+                    <p id="ocr-status" class="hidden text-xs text-amber-700 bg-amber-50 p-2 rounded-xl mb-3 font-semibold"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Membaca teks dari foto...</p>
 
                     <form id="form-member-input" onsubmit="handleAddMember(event)" class="space-y-3">
                         <input type="hidden" id="edit-member-id" value="">
@@ -230,10 +239,16 @@
                         <h3 class="font-extrabold text-sm sm:text-base text-slate-800">
                             <i class="fa-solid fa-address-book text-rms-green mr-1"></i> Daftar Anggota
                         </h3>
-                        <button onclick="exportMemberReport()"
-                            class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 rounded-xl font-bold transition shadow flex items-center space-x-1.5">
-                            <i class="fa-solid fa-file-pdf"></i><span>Cetak Laporan</span>
-                        </button>
+                        <div class="flex gap-2 flex-wrap">
+                            <button onclick="downloadAllECards()"
+                                class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs px-3 py-2 rounded-xl font-bold transition shadow flex items-center space-x-1">
+                                <i class="fa-solid fa-id-card"></i><span>Unduh Semua E-Card</span>
+                            </button>
+                            <button onclick="exportMemberReport()"
+                                class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 rounded-xl font-bold transition shadow flex items-center space-x-1.5">
+                                <i class="fa-solid fa-file-pdf"></i><span>Cetak Laporan</span>
+                            </button>
+                        </div>
                     </div>
                     <div id="members-list-container" class="space-y-2"></div>
                 </div>
@@ -261,7 +276,7 @@
 
                 <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
                     <h3 class="font-extrabold text-sm sm:text-base text-slate-800 mb-3">
-                        <i class="fa-solid fa-pen-to-square text-rms-green mr-1"></i> Catat Kas
+                        <i class="fa-solid fa-pen-to-square text-rms-green mr-1"></i> Catat Kas & Unggah Bukti
                     </h3>
                     <form onsubmit="handleTransaction(event)" class="space-y-3">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -279,7 +294,11 @@
                         </div>
                         <div>
                             <label class="form-label">Keterangan</label>
-                            <input type="text" id="trx-desc" required placeholder="Misal: Iuran bulanan" class="form-input">
+                            <input type="text" id="trx-desc" required placeholder="Misal: Pembelian Pupuk" class="form-input">
+                        </div>
+                        <div>
+                            <label class="form-label">Lampiran Bukti (Foto/Nota/PDF)</label>
+                            <input type="file" id="trx-file" accept="image/*,.pdf" class="form-input bg-white">
                         </div>
                         <button type="submit"
                             class="w-full bg-rms-green hover:bg-rms-lightgreen text-white font-bold py-3 rounded-xl text-sm transition shadow">
@@ -293,10 +312,17 @@
                         <h3 class="font-extrabold text-sm sm:text-base text-slate-800">
                             <i class="fa-solid fa-clock-rotate-left text-rms-green mr-1"></i> Riwayat Kas
                         </h3>
-                        <button onclick="exportFinanceReport()"
-                            class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 rounded-xl font-bold transition shadow flex items-center space-x-1.5">
-                            <i class="fa-solid fa-file-invoice-dollar"></i><span>Cetak Kas</span>
-                        </button>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <input type="month" id="filter-month" onchange="renderFinanceList()" class="text-xs p-1.5 border border-slate-200 rounded-lg">
+                            <button onclick="exportFinanceReport('table')"
+                                class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold transition shadow">
+                                <i class="fa-solid fa-file-invoice"></i> Laporan
+                            </button>
+                            <button onclick="exportFinanceReport('proofs')"
+                                class="bg-amber-600 hover:bg-amber-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold transition shadow">
+                                <i class="fa-solid fa-paperclip"></i> Bukti PDF
+                            </button>
+                        </div>
                     </div>
                     <div id="finance-list-container" class="space-y-2"></div>
                 </div>
@@ -344,7 +370,7 @@
 
         <!-- VIEW MEMBER DASHBOARD -->
         <section id="view-member-dashboard" class="hidden space-y-5">
-            <div class="bg-gradient-to-br from-rms-green via-rms-darkgreen to-rms-green p-5 sm:p-7 rounded-3xl shadow-xl text-white relative overflow-hidden border border-amber-300/30">
+            <div id="member-card-render-area" class="bg-gradient-to-br from-rms-green via-rms-darkgreen to-rms-green p-5 sm:p-7 rounded-3xl shadow-xl text-white relative overflow-hidden border border-amber-300/30">
                 <div class="relative flex items-center justify-between border-b border-white/20 pb-3.5 mb-4">
                     <div class="flex items-center space-x-3">
                         <div class="w-11 h-11 bg-white rounded-full p-0.5 ring-1 ring-amber-300 flex items-center justify-center shrink-0 shadow overflow-hidden">
@@ -377,7 +403,6 @@
                     </div>
                 </div>
 
-                <!-- TAMPILAN QR CODE DENGAN QUIET ZONE AMAN GOOGLE LENS -->
                 <div class="relative bg-white rounded-2xl p-4 text-center text-slate-800 shadow-lg border-2 border-amber-300">
                     <p class="text-[11px] font-extrabold text-rms-green mb-3 uppercase tracking-wider">
                         <i class="fa-solid fa-qrcode mr-1 text-rms-amber"></i> QR Code Identitas Anggota
@@ -453,11 +478,14 @@
 
     <div id="toast-container" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] space-y-2 print:hidden"></div>
 
-    <!-- LOGIKA SISTEM INTEGRASI LENGKAP -->
+    <!-- LOGIKA SISTEM TERPADU -->
     <script>
         const SUPABASE_URL = "https://hihhduyzosdrzbvtxsts.supabase.co";
         const SUPABASE_ANON_KEY = "sb_publishable_FR47_uA2_HAesqrPGvzmoA_n0KL358W";
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // LINK DOMAIN PUBLIK BARU ANDA
+        const PUBLIC_URL = "https://Kelompoktani.github.io/Riau-Mandiri-Sejaterah/";
 
         const OWNER_EMAILS = ['arniusputra6895@gmail.com', 'arniussimarmata@gmail.com'];
         const OWNER_PASSWORDS = ['@Simarmata28', 'admin123'];
@@ -508,6 +536,30 @@
                 t.style.opacity = '0'; t.style.transform = 'translateY(20px)'; t.style.transition = 'all 0.3s';
                 setTimeout(() => t.remove(), 300);
             }, 2800);
+        }
+
+        // PEMBACA OCR KTP / TULISAN TANGAN OTOMATIS
+        async function scanKTPImage(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const status = document.getElementById('ocr-status');
+            status.classList.remove('hidden');
+            try {
+                const result = await Tesseract.recognize(file, 'ind');
+                const text = result.data.text;
+                const nikMatch = text.match(/\b\d{16}\b/);
+                if (nikMatch) document.getElementById('add-nik').value = nikMatch[0];
+                const lines = text.split('\n').filter(l => l.trim().length > 3);
+                if (lines.length > 0) {
+                    const possibleName = lines.find(l => /nama/i.test(l)) || lines[0];
+                    document.getElementById('add-name').value = possibleName.replace(/nama|:|nik/gi, '').trim();
+                }
+                toast('Berhasil membaca teks KTP/Dokumen!');
+            } catch (err) {
+                toast('Gagal memproses gambar, silakan isi manual', 'warn');
+            } finally {
+                status.classList.add('hidden');
+            }
         }
 
         window.onload = async function () {
@@ -625,7 +677,6 @@
             }
         }
 
-        // DUKUNGAN LOGIN DENGAN KODE RMS MAUPUN KODE RBM LAMA
         function handleLoginMember(e) {
             e.preventDefault();
             const inputNo = document.getElementById('member-no-id').value.trim().toUpperCase();
@@ -679,75 +730,6 @@
             document.getElementById(`content-admin-${tab}`).classList.remove('hidden');
         }
 
-        function initiateAddAdmin(e) {
-            e.preventDefault();
-            const name = document.getElementById('add-admin-name').value.trim();
-            const email = document.getElementById('add-admin-email').value.trim();
-            const pass = document.getElementById('add-admin-pass').value.trim();
-            if (dbAdmins.some(a => a.email.toLowerCase() === email.toLowerCase())) {
-                toast('Email sudah terdaftar', 'error'); return;
-            }
-            pendingAction = { type: 'add', payload: { name, email, pass } };
-            sendOtpToOwnerEmail();
-        }
-
-        function requestDeleteAdmin(id) {
-            if (dbAdmins.length <= 1) { toast('Tidak bisa hapus admin terakhir', 'warn'); return; }
-            const t = dbAdmins.find(a => a.id === id);
-            if (!t) return;
-            if (confirm(`Hapus admin "${t.name}"?`)) {
-                pendingAction = { type: 'delete', payload: { id, name: t.name } };
-                sendOtpToOwnerEmail();
-            }
-        }
-
-        function sendOtpToOwnerEmail() {
-            activeOtpCode = String(Math.floor(100000 + Math.random() * 900000));
-            document.getElementById('otp-input-code').value = '';
-            document.getElementById('otp-modal').classList.remove('hidden');
-            document.getElementById('otp-modal').classList.add('flex');
-            alert(`Kode OTP Persetujuan: ${activeOtpCode}`);
-        }
-
-        async function confirmOtpSubmission() {
-            const entered = document.getElementById('otp-input-code').value.trim();
-            if (entered !== activeOtpCode) { toast('Kode OTP salah', 'error'); return; }
-            if (pendingAction.type === 'add') {
-                const { name, email, pass } = pendingAction.payload;
-                dbAdmins.push({ id: Date.now().toString(), name, email, pass });
-                await pushAllToCloud(); renderAdminsList();
-                document.getElementById('add-admin-name').value = '';
-                document.getElementById('add-admin-email').value = '';
-                document.getElementById('add-admin-pass').value = '';
-                toast('Admin baru ditambahkan');
-            } else if (pendingAction.type === 'delete') {
-                dbAdmins = dbAdmins.filter(a => a.id !== pendingAction.payload.id);
-                await pushAllToCloud(); renderAdminsList();
-                toast('Admin dihapus');
-            }
-            closeOtpModal();
-        }
-
-        function closeOtpModal() {
-            activeOtpCode = null; pendingAction = null;
-            document.getElementById('otp-modal').classList.add('hidden');
-            document.getElementById('otp-modal').classList.remove('flex');
-        }
-
-        function renderAdminsList() {
-            const c = document.getElementById('admins-list-container');
-            if (!dbAdmins.length) { c.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Belum ada admin.</p>`; return; }
-            c.innerHTML = dbAdmins.map(a => `
-                <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100 rounded-2xl gap-2">
-                    <div class="min-w-0">
-                        <h4 class="font-bold text-xs text-slate-800 truncate">${esc(a.name)}</h4>
-                        <p class="text-[11px] text-slate-500 truncate">${esc(a.email)}</p>
-                    </div>
-                    <button onclick="requestDeleteAdmin('${a.id}')" class="text-rose-500 text-xs px-2 py-1.5 font-bold hover:bg-rose-50 rounded-lg shrink-0"><i class="fa-solid fa-trash"></i></button>
-                </div>
-            `).join('');
-        }
-
         function handleRoleChange() {
             const role = document.getElementById('add-role').value;
             const c = document.getElementById('seksi-field-container');
@@ -788,45 +770,6 @@
             renderMembersList(); renderMemberListForMembers(); cancelEditMember();
         }
 
-        function editMember(id) {
-            const m = dbMembers.find(x => x.id === id);
-            if (!m) return;
-            document.getElementById('edit-member-id').value = m.id;
-            document.getElementById('add-name').value = m.name;
-            document.getElementById('add-nik').value = m.nik;
-            document.getElementById('add-phone').value = m.phone || '';
-            document.getElementById('add-loper-location').value = m.loper || '';
-            if (m.role.startsWith('Seksi')) {
-                document.getElementById('add-role').value = 'Seksi';
-                document.getElementById('seksi-field-container').classList.remove('hidden');
-                document.getElementById('add-seksi-name').value = m.role.replace('Seksi (','').replace(')','');
-            } else {
-                document.getElementById('add-role').value = m.role;
-                document.getElementById('seksi-field-container').classList.add('hidden');
-            }
-            document.getElementById('form-member-title').innerHTML = '<i class="fa-solid fa-user-pen mr-1"></i> Perbaiki Data Anggota';
-            document.getElementById('btn-save-member').innerText = 'Simpan Perubahan';
-            document.getElementById('btn-cancel-edit-member').classList.remove('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function cancelEditMember() {
-            document.getElementById('edit-member-id').value = '';
-            document.getElementById('form-member-input').reset();
-            document.getElementById('form-member-title').innerHTML = '<i class="fa-solid fa-user-plus mr-1"></i> Pendaftaran Anggota Baru';
-            document.getElementById('btn-save-member').innerText = 'Simpan Anggota Baru';
-            document.getElementById('btn-cancel-edit-member').classList.add('hidden');
-            document.getElementById('seksi-field-container').classList.add('hidden');
-        }
-
-        async function deleteMember(id) {
-            if (!confirm('Hapus anggota ini?')) return;
-            dbMembers = dbMembers.filter(m => m.id !== id);
-            await pushAllToCloud();
-            renderMembersList(); renderMemberListForMembers();
-            toast('Anggota dihapus');
-        }
-
         function renderMembersList() {
             const c = document.getElementById('members-list-container');
             if (!dbMembers.length) {
@@ -843,6 +786,7 @@
                         <p class="text-[11px] text-slate-500 font-medium truncate">${esc(m.role)} · Telp: ${esc(m.phone || '-')} · Wilayah: ${esc(m.loper || '-')}</p>
                     </div>
                     <div class="flex items-center space-x-1 shrink-0">
+                        <button onclick="downloadSingleECard('${m.id}')" title="Unduh E-Card PDF" class="text-emerald-700 text-xs px-2 py-1.5 font-bold hover:bg-emerald-100 rounded-lg transition"><i class="fa-solid fa-id-card"></i></button>
                         <button onclick="editMember('${m.id}')" class="text-amber-700 text-xs px-2 py-1.5 font-bold hover:bg-amber-100 rounded-lg transition"><i class="fa-solid fa-pen"></i></button>
                         <button onclick="deleteMember('${m.id}')" class="text-rose-500 text-xs px-2 py-1.5 font-bold hover:bg-rose-50 rounded-lg shrink-0"><i class="fa-solid fa-trash"></i></button>
                     </div>
@@ -850,48 +794,80 @@
             `).join('');
         }
 
+        // UNDUH E-Card SATUAN BERFORMAT PDF
+        function downloadSingleECard(id) {
+            const m = dbMembers.find(x => x.id === id);
+            if (!m) return;
+            const element = document.createElement('div');
+            const noNo = m.noAnggota || m.id || 'RMS-849201';
+            const qrUrl = PUBLIC_URL + "?no_anggota=" + encodeURIComponent(noNo);
+            element.innerHTML = `
+                <div style="padding:20px; background:#1E5E3A; color:#fff; border-radius:15px; font-family:sans-serif; width:350px;">
+                    <h3 style="margin:0; color:#F59E0B; font-size:13px;">KELOMPOK TANI RIAU MANDIRI SEJAHTERA</h3>
+                    <p style="margin:8px 0 2px 0; font-size:18px; font-weight:bold;">${esc(m.name)}</p>
+                    <p style="margin:2px 0; font-size:12px;">Jabatan: ${esc(m.role)}</p>
+                    <p style="margin:2px 0; font-size:12px;">ID Unik: ${esc(noNo)}</p>
+                    <div style="background:#fff; padding:10px; margin-top:12px; text-align:center; border-radius:10px;">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(qrUrl)}" style="width:120px; height:120px; display:block; margin:auto;" />
+                    </div>
+                </div>`;
+            html2pdf().from(element).save(`E-Card_${m.name.replace(/\s+/g,'_')}.pdf`);
+        }
+
+        function downloadAllECards() {
+            if (!dbMembers.length) { toast('Belum ada anggota untuk diunduh', 'warn'); return; }
+            toast('Menyiapkan semua E-Card...');
+            dbMembers.forEach((m, idx) => {
+                setTimeout(() => downloadSingleECard(m.id), idx * 800);
+            });
+        }
+
+        // UPLOAD BUKTI KAS KE SUPABASE STORAGE
         async function handleTransaction(e) {
             e.preventDefault();
             const type = document.getElementById('trx-type').value;
             const amount = Number(document.getElementById('trx-amount').value);
             const desc = document.getElementById('trx-desc').value.trim();
+            const fileInput = document.getElementById('trx-file');
+            
             if (!amount || amount <= 0) { toast('Jumlah harus lebih dari 0', 'error'); return; }
             
-            dbFinance.push({ id: Date.now().toString(), type, amount, desc });
+            let proofUrl = null;
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Date.now()}.${fileExt}`;
+                const { data, error } = await supabaseClient.storage.from('proofs').upload(fileName, file);
+                if (!error) {
+                    const { data: urlData } = supabaseClient.storage.from('proofs').getPublicUrl(fileName);
+                    proofUrl = urlData.publicUrl;
+                }
+            }
+            
+            dbFinance.push({ id: Date.now().toString(), type, amount, desc, proofUrl, date: new Date().toISOString() });
             await pushAllToCloud();
             renderFinanceList(); renderMemberFinanceView();
             e.target.reset();
-            toast('Transaksi dicatat');
-        }
-
-        async function deleteTransaction(id) {
-            if (!confirm('Hapus transaksi ini?')) return;
-            dbFinance = dbFinance.filter(t => t.id !== id);
-            await pushAllToCloud();
-            renderFinanceList(); renderMemberFinanceView();
-            toast('Transaksi dihapus');
-        }
-
-        function calcTotals() {
-            let income = 0, expense = 0;
-            dbFinance.forEach(t => {
-                const amt = Number(t.amount) || 0;
-                if (t.type === 'Masuk') income += amt; else expense += amt;
-            });
-            return { income, expense, balance: income - expense };
+            toast('Transaksi & bukti dicatat');
         }
 
         function renderFinanceList() {
             const c = document.getElementById('finance-list-container');
-            if (!dbFinance.length) {
+            const monthFilter = document.getElementById('filter-month')?.value;
+            let list = dbFinance;
+            if (monthFilter) {
+                list = list.filter(t => t.date && t.date.startsWith(monthFilter));
+            }
+            if (!list.length) {
                 c.innerHTML = `<div class="text-center py-8 text-slate-400"><i class="fa-solid fa-receipt text-3xl mb-2 block"></i><p class="text-xs">Belum ada catatan kas.</p></div>`;
             } else {
-                c.innerHTML = dbFinance.map(t => `
+                c.innerHTML = list.map(t => `
                     <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100/80 rounded-2xl gap-2">
                         <div class="min-w-0">
                             <span class="text-[10px] font-black px-2 py-0.5 rounded-md ${t.type === 'Masuk' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">${esc(t.type)}</span>
                             <span class="font-bold text-xs text-slate-800 ml-1.5">${esc(t.desc)}</span>
                             <p class="text-[11px] font-extrabold text-slate-700 mt-0.5">${fmtRp(t.amount)}</p>
+                            ${t.proofUrl ? `<a href="${t.proofUrl}" target="_blank" class="text-[10px] text-blue-600 underline font-bold"><i class="fa-solid fa-paperclip"></i> Lihat Bukti</a>` : ''}
                         </div>
                         <button onclick="deleteTransaction('${t.id}')" class="text-rose-500 text-xs px-2 py-1.5 font-bold hover:bg-rose-50 rounded-lg shrink-0"><i class="fa-solid fa-trash"></i></button>
                     </div>
@@ -914,7 +890,7 @@
             if (!container) return;
             container.innerHTML = '';
 
-            const targetUrl = "https://arniussimarmata.github.io/Riau-Bersatu-Mandiri/?no_anggota=" + encodeURIComponent(userNo);
+            const targetUrl = PUBLIC_URL + "?no_anggota=" + encodeURIComponent(userNo);
 
             if (typeof QRCode !== 'undefined') {
                 new QRCode(container, {
@@ -957,6 +933,48 @@
             `).join('');
         }
 
+        // LAPORAN KEUANGAN & PEMISAHAN BUKTI BERDASARKAN BULAN
+        function exportFinanceReport(mode = 'table') {
+            const area = document.getElementById('print-area');
+            const monthFilter = document.getElementById('filter-month')?.value;
+            let list = dbFinance;
+            if (monthFilter) list = list.filter(t => t.date && t.date.startsWith(monthFilter));
+
+            if (mode === 'table') {
+                const rows = list.map((t, i) => `
+                    <tr><td>${i + 1}</td><td>${esc(t.type)}</td><td>${esc(t.desc)}</td><td style="text-align:right">${fmtRp(t.amount)}</td></tr>
+                `).join('');
+                const { income, expense, balance } = calcTotals();
+                area.innerHTML = `
+                    <h1>Laporan Keuangan Kas ${monthFilter ? 'Bulan ' + monthFilter : ''}</h1>
+                    <p class="report-meta">Kelompok Tani Riau Mandiri Sejahtera (RMS) · Dicetak ${new Date().toLocaleDateString('id-ID')}</p>
+                    <table>
+                        <thead><tr><th>#</th><th>Jenis</th><th>Keterangan</th><th style="text-align:right">Jumlah</th></tr></thead>
+                        <tbody>${rows || '<tr><td colspan="4" style="text-align:center">Belum ada transaksi</td></tr>'}</tbody>
+                        <tfoot>
+                            <tr class="total-row"><td colspan="3">Total Pemasukan</td><td style="text-align:right">${fmtRp(income)}</td></tr>
+                            <tr class="total-row"><td colspan="3">Total Pengeluaran</td><td style="text-align:right">${fmtRp(expense)}</td></tr>
+                            <tr class="total-row"><td colspan="3">Saldo Akhir</td><td style="text-align:right">${fmtRp(balance)}</td></tr>
+                        </tfoot>
+                    </table>`;
+            } else {
+                const proofsHtml = list.filter(t => t.proofUrl).map((t, i) => `
+                    <div style="margin-bottom:20px; border-bottom:1px solid #ccc; padding-bottom:10px;">
+                        <h4>#${i + 1} ${esc(t.desc)} (${fmtRp(t.amount)})</h4>
+                        <img src="${t.proofUrl}" style="max-width:100%; max-height:400px; display:block; margin-top:5px;" />
+                    </div>
+                `).join('');
+                area.innerHTML = `
+                    <h1>Lampiran Bukti Transaksi ${monthFilter ? 'Bulan ' + monthFilter : ''}</h1>
+                    <p class="report-meta">Kelompok Tani Riau Mandiri Sejahtera (RMS) · Dicetak ${new Date().toLocaleDateString('id-ID')}</p>
+                    ${proofsHtml || '<p>Tidak ada lampiran bukti pada periode ini.</p>'}
+                `;
+            }
+            area.classList.remove('hidden');
+            window.print();
+            setTimeout(() => { area.classList.add('hidden'); area.innerHTML = ''; }, 1000);
+        }
+
         function exportMemberReport() {
             const area = document.getElementById('print-area');
             const rows = dbMembers.map((m, i) => `
@@ -964,34 +982,11 @@
             `).join('');
             area.innerHTML = `
                 <h1>Laporan Daftar Anggota</h1>
-                <p class="report-meta">Kelompok Tani Riau Mandiri Sejahtera (RMS) · Dicetak ${new Date().toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' })}</p>
+                <p class="report-meta">Kelompok Tani Riau Mandiri Sejahtera (RMS) · Dicetak ${new Date().toLocaleDateString('id-ID')}</p>
                 <table>
                     <thead><tr><th>#</th><th>No. Anggota Unik</th><th>Nama</th><th>Jabatan</th><th>Telepon</th><th>Wilayah</th></tr></thead>
                     <tbody>${rows}</tbody>
                     <tfoot><tr class="total-row"><td colspan="6">Total: ${dbMembers.length} anggota</td></tr></tfoot>
-                </table>`;
-            area.classList.remove('hidden');
-            window.print();
-            setTimeout(() => { area.classList.add('hidden'); area.innerHTML = ''; }, 1000);
-        }
-
-        function exportFinanceReport() {
-            const area = document.getElementById('print-area');
-            const rows = dbFinance.map((t, i) => `
-                <tr><td>${i + 1}</td><td>${esc(t.type)}</td><td>${esc(t.desc)}</td><td style="text-align:right">${fmtRp(t.amount)}</td></tr>
-            `).join('');
-            const { income, expense, balance } = calcTotals();
-            area.innerHTML = `
-                <h1>Laporan Keuangan Kas</h1>
-                <p class="report-meta">Kelompok Tani Riau Mandiri Sejahtera (RMS) · Dicetak ${new Date().toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' })}</p>
-                <table>
-                    <thead><tr><th>#</th><th>Jenis</th><th>Keterangan</th><th style="text-align:right">Jumlah</th></tr></thead>
-                    <tbody>${rows || '<tr><td colspan="4" style="text-align:center;color:#94a3b8">Belum ada transaksi</td></tr>'}</tbody>
-                    <tfoot>
-                        <tr class="total-row"><td colspan="3">Total Pemasukan</td><td style="text-align:right">${fmtRp(income)}</td></tr>
-                        <tr class="total-row"><td colspan="3">Total Pengeluaran</td><td style="text-align:right">${fmtRp(expense)}</td></tr>
-                        <tr class="total-row"><td colspan="3">Saldo Akhir</td><td style="text-align:right">${fmtRp(balance)}</td></tr>
-                    </tfoot>
                 </table>`;
             area.classList.remove('hidden');
             window.print();
