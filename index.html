@@ -6,78 +6,91 @@
     <meta name="theme-color" content="#1E5E3A">
     <title>Kelompok Tani Riau Mandiri Sejahtera (RMS)</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        rms: {
-                            green: '#1E5E3A',
-                            lightgreen: '#2D8A54',
-                            darkgreen: '#0F3D24',
-                            amber: '#D97706',
-                            gold: '#E5A93C',
-                            bg: '#FAF8F5'
-                        }
-                    },
-                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
-                    boxShadow: {
-                        'soft': '0 4px 20px -4px rgba(30, 94, 58, 0.08)',
-                        'card': '0 2px 12px -2px rgba(0, 0, 0, 0.06)'
-                    }
-                }
+    <!-- Tailwind (tanpa build) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.4"></script>
+    <style type="text/tailwindcss">
+        @theme {
+            --color-rms-green: #1E5E3A;
+            --color-rms-lightgreen: #2D8A54;
+            --color-rms-darkgreen: #0F3D24;
+            --color-rms-amber: #D97706;
+            --color-rms-gold: #E5A93C;
+            --color-rms-bg: #FAF8F5;
+            --font-sans: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        @layer base {
+            body {
+                font-family: 'Plus Jakarta Sans', sans-serif;
+                -webkit-tap-highlight-color: transparent;
             }
         }
-    </script>
+
+        @layer components {
+            .form-label {
+                @apply block text-xs font-semibold text-slate-700 mb-1.5;
+            }
+            .form-input {
+                @apply w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl outline-none bg-slate-50/50 transition focus:border-emerald-700 focus:bg-white focus:ring-2 focus:ring-emerald-700/20;
+            }
+            .admin-tab {
+                @apply flex-1 py-2.5 text-xs font-bold rounded-xl text-slate-600 flex items-center justify-center gap-1.5 transition;
+            }
+            .admin-tab.active {
+                @apply bg-emerald-800 text-white shadow-sm;
+            }
+            .admin-tab.active i {
+                @apply text-amber-400;
+            }
+            .stat-card {
+                @apply flex flex-col items-center justify-center p-3 rounded-2xl border text-center gap-0.5;
+            }
+            .stat-label {
+                @apply block text-[10px] font-bold leading-tight;
+            }
+            .stat-value {
+                @apply text-xs font-extrabold leading-tight break-all;
+            }
+            .toast {
+                @apply flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-800 text-white text-xs font-semibold shadow-xl transition-all duration-300 max-w-[90vw];
+                animation: toastIn 0.3s ease-out;
+            }
+            .toast.error {
+                @apply bg-rose-600;
+            }
+            .toast.warn {
+                @apply bg-amber-600;
+            }
+        }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
+
+    <!-- Library pendukung -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
-    <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
-        .form-label { display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.375rem; }
-        .form-input { width: 100%; padding: 0.625rem 0.875rem; font-size: 0.8125rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; outline: none; background: rgba(248, 250, 252, 0.5); transition: all 0.15s; }
-        .form-input:focus { border-color: transparent; box-shadow: 0 0 0 2px #1E5E3A; background: #fff; }
-        .admin-tab { padding: 0.75rem 0.5rem; background: transparent; color: #475569; border-radius: 0.75rem; font-weight: 700; font-size: 0.75rem; display: flex; align-items: center; justify-content: center; gap: 0.375rem; transition: all 0.2s; }
-        .admin-tab.active { background: #1E5E3A; color: #fff; box-shadow: 0 2px 8px -2px rgba(30, 94, 58, 0.4); }
-        .admin-tab.active i { color: #E5A93C; }
-        .stat-card { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0.75rem 0.5rem; border-radius: 1rem; border-width: 1px; text-align: center; gap: 0.125rem; }
-        .stat-card i { font-size: 0.75rem; margin-bottom: 0.125rem; }
-        .stat-label { font-size: 0.625rem; font-weight: 700; display: block; line-height: 1.2; }
-        .stat-value { font-size: 0.75rem; font-weight: 800; line-height: 1.2; word-break: break-all; }
-        .toast { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border-radius: 0.75rem; background: #1E5E3A; color: #fff; font-size: 0.8125rem; font-weight: 600; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2); animation: toastIn 0.3s ease-out; max-width: 90vw; }
-        .toast.error { background: #dc2626; }
-        .toast.warn  { background: #D97706; }
-        @keyframes toastIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* DESAIN CHIP PRINTING KARTU ID AKURAT */
-        @media print {
-            body * { visibility: hidden !important; }
-            #print-area, #print-area * { visibility: visible !important; }
-            #print-area { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
-            @page { size: auto; margin: 10mm; }
-        }
-        #print-area h1 { font-size: 1.25rem; font-weight: 800; margin-bottom: 0.25rem; }
-        #print-area .report-meta { font-size: 0.75rem; color: #64748b; margin-bottom: 1rem; }
-        #print-area table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 0.5rem; }
-        #print-area th, #print-area td { padding: 0.5rem; border: 1px solid #cbd5e1; text-align: left; }
-        #print-area th { background: #f1f5f9; font-weight: 700; }
-        #print-area .total-row { font-weight: 800; background: #fafaf9; }
-    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 </head>
-<body class="bg-rms-bg text-slate-800 min-h-screen flex flex-col antialiased">
+<body class="bg-[#FAF8F5] text-slate-800 min-h-screen flex flex-col antialiased">
 
-    <header class="bg-gradient-to-r from-rms-green to-rms-lightgreen text-white shadow-lg sticky top-0 z-50 print:hidden">
+    <!-- HEADER -->
+    <header class="bg-gradient-to-r from-[#1E5E3A] to-[#2D8A54] text-white shadow-lg sticky top-0 z-50">
         <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center gap-3">
             <div class="flex items-center space-x-3 min-w-0">
                 <div class="w-11 h-11 bg-white rounded-full p-0.5 shadow ring-2 ring-amber-300/70 flex items-center justify-center shrink-0 overflow-hidden">
-                    <img src="./logo.jpg" onerror="this.onerror=null; this.src='./logo.png';" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
+                    <img src="./logo.webp" onerror="this.onerror=null; this.src='./logo.jpg';" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
                 </div>
                 <div class="min-w-0">
                     <p class="font-bold text-[10px] sm:text-xs tracking-wider text-amber-300 leading-tight">KELOMPOK TANI</p>
@@ -99,42 +112,40 @@
         </div>
     </header>
 
-    <main class="max-w-5xl w-full mx-auto p-4 flex-grow print:hidden">
+    <main class="max-w-5xl w-full mx-auto p-4 flex-grow">
 
         <!-- VIEW LOGIN -->
         <section id="view-login" class="max-w-md mx-auto mt-4 sm:mt-10">
-            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-soft border border-amber-100/70">
+            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-amber-100/70">
                 <div class="text-center mb-6">
-                    <div class="w-28 h-28 bg-white rounded-full p-1 mx-auto mb-4 shadow-md ring-2 ring-rms-green/20 flex items-center justify-center overflow-hidden">
-                        <img src="./logo.jpg" onerror="this.onerror=null; this.src='./logo.png';" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
+                    <div class="w-24 h-24 bg-white rounded-full p-1 mx-auto mb-4 shadow-md ring-2 ring-emerald-800/20 flex items-center justify-center overflow-hidden">
+                        <img src="./logo.webp" onerror="this.onerror=null; this.src='./logo.jpg';" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
                     </div>
-                    <h2 class="font-extrabold text-lg text-rms-green">Selamat Datang</h2>
-                    <p class="text-xs text-slate-500 font-medium mt-1">Sistem Administrasi & Keuangan Terpadu</p>
+                    <h2 class="font-extrabold text-lg text-emerald-800">Selamat Datang</h2>
+                    <p class="text-xs text-slate-500 font-medium mt-1">Sistem Administrasi &amp; Keuangan Terpadu</p>
                 </div>
 
                 <div class="flex bg-slate-100 p-1.5 rounded-2xl mb-6 border border-slate-200/60">
-                    <button onclick="switchLoginTab('admin')" id="tab-btn-admin"
-                        class="flex-1 py-2.5 text-xs font-bold rounded-xl bg-rms-green text-white shadow-sm transition">
-                        <i class="fa-solid fa-user-shield mr-1"></i> Pengurus
+                    <button onclick="switchLoginTab('admin')" id="tab-btn-admin" class="admin-tab active">
+                        <i class="fa-solid fa-user-shield"></i> Pengurus
                     </button>
-                    <button onclick="switchLoginTab('member')" id="tab-btn-member"
-                        class="flex-1 py-2.5 text-xs font-bold rounded-xl text-slate-600 transition">
-                        <i class="fa-solid fa-id-card mr-1"></i> Anggota
+                    <button onclick="switchLoginTab('member')" id="tab-btn-member" class="admin-tab">
+                        <i class="fa-solid fa-id-card"></i> Anggota
                     </button>
                 </div>
 
-                <!-- LOGIN ADMIN -->
+                <!-- LOGIN ADMIN (Supabase Auth) -->
                 <form id="form-login-admin" onsubmit="handleLoginAdmin(event)" class="space-y-4">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-700 mb-1.5">Email Pengurus</label>
-                        <input type="email" id="admin-email" required placeholder="email@contoh.com" class="form-input">
+                        <label class="form-label">Email Pengurus</label>
+                        <input type="email" id="admin-email" required placeholder="admin@rms.com" autocomplete="username" class="form-input">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-slate-700 mb-1.5">Kata Sandi</label>
-                        <input type="password" id="admin-pass" required placeholder="••••••••" class="form-input">
+                        <label class="form-label">Kata Sandi</label>
+                        <input type="password" id="admin-pass" required placeholder="••••••••" autocomplete="current-password" class="form-input">
                     </div>
                     <button type="submit"
-                        class="w-full bg-gradient-to-r from-rms-green to-rms-lightgreen hover:opacity-95 text-white font-bold py-3 rounded-xl text-sm transition shadow-md">
+                        class="w-full bg-gradient-to-r from-emerald-800 to-emerald-600 hover:opacity-95 text-white font-bold py-3 rounded-xl text-sm transition shadow-md">
                         Masuk Pengurus
                     </button>
                 </form>
@@ -142,12 +153,16 @@
                 <!-- LOGIN ANGGOTA -->
                 <form id="form-login-member" onsubmit="handleLoginMember(event)" class="space-y-4 hidden">
                     <div>
-                        <label class="block text-xs font-semibold text-slate-700 mb-1.5">Nomor Anggota Unik</label>
-                        <input type="text" id="member-no-id" required placeholder="Contoh: RMS-849201 atau RBM-001"
-                            class="w-full px-4 py-3 text-sm uppercase tracking-wider font-bold border border-slate-200 rounded-xl focus:ring-2 focus:ring-rms-amber outline-none bg-slate-50/50 transition">
+                        <label class="form-label">Nomor Anggota</label>
+                        <input type="text" id="member-no-id" required placeholder="RMS-849201"
+                            class="w-full px-4 py-3 text-sm uppercase tracking-wider font-bold border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50/50 transition">
+                    </div>
+                    <div>
+                        <label class="form-label">PIN Keamanan (4-6 Digit, isi jika sudah diberi PIN)</label>
+                        <input type="password" id="member-pin" placeholder="••••" maxlength="6" inputmode="numeric" class="form-input">
                     </div>
                     <button type="submit"
-                        class="w-full bg-gradient-to-r from-rms-amber to-amber-600 hover:opacity-95 text-white font-bold py-3 rounded-xl text-sm transition shadow-md">
+                        class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:opacity-95 text-white font-bold py-3 rounded-xl text-sm transition shadow-md">
                         Masuk Anggota
                     </button>
                 </form>
@@ -156,31 +171,29 @@
 
         <!-- VIEW ADMIN DASHBOARD -->
         <section id="view-admin-dashboard" class="hidden space-y-5">
-            <div class="grid grid-cols-3 gap-2 bg-white p-2 rounded-2xl border border-amber-100/70 shadow-card">
+            <div class="grid grid-cols-2 gap-2 bg-white p-2 rounded-2xl border border-amber-100/70 shadow-sm">
                 <button onclick="switchAdminTab('members')" id="admin-tab-members" class="admin-tab active">
                     <i class="fa-solid fa-users"></i><span>Anggota</span>
                 </button>
                 <button onclick="switchAdminTab('finance')" id="admin-tab-finance" class="admin-tab">
                     <i class="fa-solid fa-wallet"></i><span>Keuangan</span>
                 </button>
-                <button onclick="switchAdminTab('admins')" id="admin-tab-admins" class="admin-tab">
-                    <i class="fa-solid fa-user-shield"></i><span>Admin</span>
-                </button>
             </div>
 
+            <!-- TAB ANGGOTA -->
             <div id="content-admin-members" class="space-y-4">
-                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
+                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-amber-100/60">
                     <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                        <h3 id="form-member-title" class="font-extrabold text-sm sm:text-base text-rms-green">
+                        <h3 id="form-member-title" class="font-extrabold text-sm sm:text-base text-emerald-800">
                             <i class="fa-solid fa-user-plus mr-1"></i> Pendaftaran Anggota Baru
                         </h3>
                         <label class="cursor-pointer bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition shadow flex items-center gap-1.5">
-                            <i class="fa-solid fa-camera"></i> Scan KTP / Tangan
+                            <i class="fa-solid fa-camera"></i> Scan KTP / Dokumen
                             <input type="file" id="ktp-scanner-input" accept="image/*" class="hidden" onchange="scanKTPImage(event)">
                         </label>
                     </div>
 
-                    <p id="ocr-status" class="hidden text-xs text-amber-700 bg-amber-50 p-2 rounded-xl mb-3 font-semibold"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Membaca teks dari foto...</p>
+                    <p id="ocr-status" class="hidden text-xs text-amber-700 bg-amber-50 p-2 rounded-xl mb-3 font-semibold"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Membaca teks KTP...</p>
 
                     <form id="form-member-input" onsubmit="handleAddMember(event)" class="space-y-3">
                         <input type="hidden" id="edit-member-id" value="">
@@ -197,7 +210,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
                                 <label class="form-label">Jabatan / Peran</label>
-                                <select id="add-role" onchange="handleRoleChange()" class="form-input bg-white">
+                                <select id="add-role" class="form-input bg-white">
                                     <option value="Anggota">Anggota Tani</option>
                                     <option value="Loper">Loper / PJ Wilayah</option>
                                     <option value="Ketua">Ketua Kelompok Tani</option>
@@ -205,7 +218,6 @@
                                     <option value="Bendahara">Bendahara</option>
                                     <option value="Dewan Pendiri">Dewan Pendiri</option>
                                     <option value="Dewan Pengawas">Dewan Pengawas</option>
-                                    <option value="Seksi">Seksi (Bidang Khusus)</option>
                                 </select>
                             </div>
                             <div>
@@ -217,13 +229,9 @@
                                 <input type="text" id="add-loper-location" placeholder="Contoh: Indragiri" class="form-input">
                             </div>
                         </div>
-                        <div id="seksi-field-container" class="hidden">
-                            <label class="form-label">Nama Bidang Seksi</label>
-                            <input type="text" id="add-seksi-name" placeholder="Contoh: Seksi Pengairan" class="form-input">
-                        </div>
                         <div class="flex space-x-2 pt-1">
                             <button type="submit" id="btn-save-member"
-                                class="flex-1 bg-rms-green hover:bg-rms-lightgreen text-white font-bold py-2.5 rounded-xl text-sm transition shadow">
+                                class="flex-1 bg-emerald-800 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow">
                                 Simpan Anggota Baru
                             </button>
                             <button type="button" id="btn-cancel-edit-member" onclick="cancelEditMember()"
@@ -234,38 +242,38 @@
                     </form>
                 </div>
 
-                <!-- PANEL PILIHAN UNDUH E-CARD -->
-                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
-                    <h3 class="font-extrabold text-sm sm:text-base text-rms-green mb-3">
+                <!-- PUSAT UNDUH E-CARD ANGGOTA -->
+                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-amber-100/60">
+                    <h3 class="font-extrabold text-sm sm:text-base text-emerald-800 mb-3">
                         <i class="fa-solid fa-id-card mr-1"></i> Pusat Unduh E-Card Anggota
                     </h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/50 p-4 rounded-2xl border border-amber-200/60 mb-4">
                         <div>
-                            <label class="form-label">Pilih Anggota Spesifik (Satuan)</label>
+                            <label class="form-label">1. Unduh E-Card Satuan (Pilih Anggota)</label>
                             <div class="flex gap-2">
                                 <select id="select-single-member-ecard" class="form-input bg-white font-semibold">
-                                    <option value="">-- Pilih Nama / Kode Unik --</option>
+                                    <option value="">-- Pilih Anggota --</option>
                                 </select>
-                                <button onclick="downloadSelectedSingleECard()" class="bg-rms-green hover:bg-rms-lightgreen text-white px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1">
+                                <button onclick="downloadSelectedSingleECard()" class="bg-emerald-800 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1 shadow">
                                     <i class="fa-solid fa-download"></i> Unduh
                                 </button>
                             </div>
                         </div>
                         <div class="flex flex-col justify-end">
-                            <label class="form-label">Unduh Seluruh Anggota Sekaligus</label>
-                            <button onclick="downloadAllECards()" class="bg-amber-600 hover:bg-amber-700 text-white w-full py-2.5 rounded-xl text-xs font-bold transition shadow flex items-center justify-center gap-1.5">
-                                <i class="fa-solid fa-file-zipper"></i> Unduh Semua E-Card (Massal)
+                            <label class="form-label">2. Unduh Semua E-Card (ZIP Massal)</label>
+                            <button onclick="downloadAllECardsZip()" class="bg-amber-600 hover:bg-amber-700 text-white w-full py-2.5 rounded-xl text-xs font-bold transition shadow flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-file-zipper"></i> Unduh ZIP Massal
                             </button>
                         </div>
                     </div>
 
                     <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
                         <h4 class="font-extrabold text-sm text-slate-800">
-                            <i class="fa-solid fa-address-book text-rms-green mr-1"></i> Daftar Anggota
+                            <i class="fa-solid fa-address-book text-emerald-800 mr-1"></i> Daftar Anggota Terdaftar
                         </h4>
                         <button onclick="exportMemberReport()"
                             class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 rounded-xl font-bold transition shadow flex items-center space-x-1.5">
-                            <i class="fa-solid fa-file-pdf"></i><span>Cetak Laporan</span>
+                            <i class="fa-solid fa-file-pdf"></i><span>Cetak Laporan PDF</span>
                         </button>
                     </div>
                     <div id="members-list-container" class="space-y-2"></div>
@@ -285,16 +293,16 @@
                         <span class="stat-label text-rose-700">Total Keluar</span>
                         <span id="summary-expense" class="stat-value text-rose-800">Rp 0</span>
                     </div>
-                    <div class="stat-card bg-rms-green border-rms-darkgreen !text-white">
+                    <div class="stat-card bg-emerald-800 border-emerald-900 !text-white">
                         <i class="fa-solid fa-wallet text-amber-300"></i>
                         <span class="stat-label text-amber-200">Saldo Kas</span>
                         <span id="summary-balance" class="stat-value text-amber-300">Rp 0</span>
                     </div>
                 </div>
 
-                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
+                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-amber-100/60">
                     <h3 class="font-extrabold text-sm sm:text-base text-slate-800 mb-3">
-                        <i class="fa-solid fa-pen-to-square text-rms-green mr-1"></i> Catat Kas & Unggah Bukti
+                        <i class="fa-solid fa-pen-to-square text-emerald-800 mr-1"></i> Catat Kas &amp; Unggah Bukti
                     </h3>
                     <form onsubmit="handleTransaction(event)" class="space-y-3">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -315,84 +323,41 @@
                             <input type="text" id="trx-desc" required placeholder="Misal: Pembelian Pupuk" class="form-input">
                         </div>
                         <div>
-                            <label class="form-label">Lampiran Bukti (Foto/Nota/PDF)</label>
+                            <label class="form-label">Lampiran Bukti (Foto/Nota/PDF, maks 5 MB)</label>
                             <input type="file" id="trx-file" accept="image/*,.pdf" class="form-input bg-white">
                         </div>
                         <button type="submit"
-                            class="w-full bg-rms-green hover:bg-rms-lightgreen text-white font-bold py-3 rounded-xl text-sm transition shadow">
+                            class="w-full bg-emerald-800 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition shadow">
                             Simpan Catatan Kas
                         </button>
                     </form>
                 </div>
 
-                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
+                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-amber-100/60">
                     <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
                         <h3 class="font-extrabold text-sm sm:text-base text-slate-800">
-                            <i class="fa-solid fa-clock-rotate-left text-rms-green mr-1"></i> Riwayat Kas
+                            <i class="fa-solid fa-clock-rotate-left text-emerald-800 mr-1"></i> Riwayat Kas
                         </h3>
                         <div class="flex items-center gap-2 flex-wrap">
                             <input type="month" id="filter-month" onchange="renderFinanceList()" class="text-xs p-1.5 border border-slate-200 rounded-lg">
-                            <button onclick="exportFinanceReport('table')"
+                            <button onclick="exportFinanceReport()"
                                 class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold transition shadow">
-                                <i class="fa-solid fa-file-invoice"></i> Laporan
-                            </button>
-                            <button onclick="exportFinanceReport('proofs')"
-                                class="bg-amber-600 hover:bg-amber-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold transition shadow">
-                                <i class="fa-solid fa-paperclip"></i> Bukti PDF
+                                <i class="fa-solid fa-file-invoice"></i> Cetak Kas PDF
                             </button>
                         </div>
                     </div>
                     <div id="finance-list-container" class="space-y-2"></div>
                 </div>
             </div>
-
-            <!-- TAB ADMIN -->
-            <div id="content-admin-admins" class="space-y-4 hidden">
-                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
-                    <h3 class="font-extrabold text-sm sm:text-base text-slate-800 mb-1">
-                        <i class="fa-solid fa-user-plus text-rms-green mr-1"></i> Tambah Pengurus Baru
-                    </h3>
-                    <p class="text-[11px] text-amber-700 mb-4">
-                        <i class="fa-solid fa-shield-halved mr-1"></i> Memerlukan verifikasi OTP ke email pemilik utama.
-                    </p>
-                    <form onsubmit="initiateAddAdmin(event)" class="space-y-3">
-                        <div>
-                            <label class="form-label">Nama Pengurus</label>
-                            <input type="text" id="add-admin-name" required placeholder="Nama lengkap" class="form-input">
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label class="form-label">Email Login</label>
-                                <input type="email" id="add-admin-email" required placeholder="admin@rms.com" class="form-input">
-                            </div>
-                            <div>
-                                <label class="form-label">Kata Sandi</label>
-                                <input type="password" id="add-admin-pass" required placeholder="••••••••" class="form-input">
-                            </div>
-                        </div>
-                        <button type="submit"
-                            class="w-full bg-rms-green hover:bg-rms-lightgreen text-white font-bold py-3 rounded-xl text-sm transition shadow">
-                            Kirim OTP Persetujuan
-                        </button>
-                    </form>
-                </div>
-
-                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
-                    <h3 class="font-extrabold text-sm sm:text-base text-slate-800 mb-4">
-                        <i class="fa-solid fa-users-gear text-rms-green mr-1"></i> Daftar Admin Utama
-                    </h3>
-                    <div id="admins-list-container" class="space-y-2"></div>
-                </div>
-            </div>
         </section>
 
         <!-- VIEW MEMBER DASHBOARD -->
         <section id="view-member-dashboard" class="hidden space-y-5">
-            <div id="member-card-render-area" class="bg-gradient-to-br from-rms-green via-rms-darkgreen to-rms-green p-5 sm:p-7 rounded-3xl shadow-xl text-white relative overflow-hidden border border-amber-300/30">
+            <div id="member-card-render-area" class="bg-gradient-to-br from-[#1E5E3A] via-[#0F3D24] to-[#1E5E3A] p-5 sm:p-7 rounded-3xl shadow-xl text-white relative overflow-hidden border border-amber-300/30">
                 <div class="relative flex items-center justify-between border-b border-white/20 pb-3.5 mb-4">
                     <div class="flex items-center space-x-3">
                         <div class="w-11 h-11 bg-white rounded-full p-0.5 ring-1 ring-amber-300 flex items-center justify-center shrink-0 shadow overflow-hidden">
-                            <img src="./logo.jpg" onerror="this.onerror=null; this.src='./logo.png';" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
+                            <img src="./logo.webp" onerror="this.onerror=null; this.src='./logo.jpg';" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
                         </div>
                         <div>
                             <p class="font-extrabold text-[10px] tracking-wider text-amber-300">KELOMPOK TANI</p>
@@ -422,21 +387,21 @@
                 </div>
 
                 <div class="relative bg-white rounded-2xl p-4 text-center text-slate-800 shadow-lg border-2 border-amber-300">
-                    <p class="text-[11px] font-extrabold text-rms-green mb-3 uppercase tracking-wider">
-                        <i class="fa-solid fa-qrcode mr-1 text-rms-amber"></i> QR Code Identitas Anggota
+                    <p class="text-[11px] font-extrabold text-emerald-800 mb-3 uppercase tracking-wider">
+                        <i class="fa-solid fa-qrcode mr-1 text-amber-500"></i> QR Code Identitas Anggota
                     </p>
                     <div class="bg-white p-3 rounded-xl inline-block shadow-inner border border-slate-200">
                         <div id="qrcode-container" class="flex justify-center items-center"></div>
                     </div>
                     <p class="text-[10px] text-slate-500 font-medium mt-2">
-                        Scan QR Code di atas dengan Kamera / Google Lens untuk masuk otomatis.
+                        Scan QR Code ini untuk masuk otomatis. Jaga kerahasiaannya.
                     </p>
                 </div>
             </div>
 
-            <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
+            <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-amber-100/60">
                 <h3 class="font-extrabold text-sm sm:text-base text-slate-800 mb-3">
-                    <i class="fa-solid fa-chart-pie text-rms-green mr-1"></i> Laporan Kas Kelompok
+                    <i class="fa-solid fa-chart-pie text-emerald-800 mr-1"></i> Ringkasan Kas Kelompok
                 </h3>
                 <div class="grid grid-cols-3 gap-2">
                     <div class="stat-card bg-emerald-50 border-emerald-100">
@@ -447,622 +412,24 @@
                         <span class="stat-label text-rose-700">Keluar</span>
                         <span id="member-summary-expense" class="stat-value text-rose-800">Rp 0</span>
                     </div>
-                    <div class="stat-card bg-rms-green border-rms-darkgreen !text-white">
+                    <div class="stat-card bg-emerald-800 border-emerald-900 !text-white">
                         <span class="stat-label text-amber-200">Saldo Kas</span>
                         <span id="member-summary-balance" class="stat-value text-amber-300">Rp 0</span>
                     </div>
                 </div>
             </div>
-
-            <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
-                <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
-                    <h3 class="font-extrabold text-sm sm:text-base text-slate-800">
-                        <i class="fa-solid fa-users text-rms-green mr-1"></i> Anggota Terdaftar
-                    </h3>
-                    <span id="member-total-count" class="text-xs font-bold bg-amber-100 text-amber-900 px-2.5 py-1 rounded-full border border-amber-200">
-                        Total: 0
-                    </span>
-                </div>
-                <div id="member-view-members-list" class="space-y-2 max-h-72 overflow-y-auto pr-1"></div>
-            </div>
         </section>
     </main>
 
-    <div id="print-area" class="hidden p-4 bg-white text-slate-900"></div>
+    <!-- Area tersembunyi untuk membuat gambar E-Card -->
+    <div id="export-card-hidden-area" style="position:fixed; left:-9999px; top:-9999px;"></div>
 
-    <footer class="bg-white border-t border-amber-100 py-4 text-center text-xs text-slate-400 mt-auto print:hidden">
+    <footer class="bg-white border-t border-amber-100 py-4 text-center text-xs text-slate-400 mt-auto">
         &copy; 2026 Kelompok Tani Riau Mandiri Sejahtera (RMS). All rights reserved.
     </footer>
 
-    <!-- MODAL OTP -->
-    <div id="otp-modal" class="fixed inset-0 bg-black/70 z-50 hidden items-center justify-center p-4 print:hidden backdrop-blur-sm">
-        <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center relative shadow-2xl border border-amber-100">
-            <div class="w-14 h-14 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center text-2xl mx-auto mb-3">
-                <i class="fa-solid fa-envelope-circle-check"></i>
-            </div>
-            <h3 class="font-extrabold text-base text-slate-900 mb-1">Verifikasi OTP</h3>
-            <p class="text-xs text-slate-500 mb-4 leading-relaxed">
-                Kode 6-digit dikirim ke email pemilik utama:<br>
-                <b class="text-slate-800 text-[11px]">arniusputra6895@gmail.com</b>
-            </p>
-            <input type="text" id="otp-input-code" maxlength="6" inputmode="numeric" placeholder="000000"
-                class="w-full text-center tracking-[0.5em] text-xl font-extrabold border-2 border-rms-green rounded-xl py-3 px-3 mb-4 outline-none focus:ring-2 focus:ring-rms-lightgreen">
-            <div class="flex space-x-2">
-                <button onclick="closeOtpModal()" class="flex-1 bg-slate-100 text-slate-600 font-bold py-2.5 rounded-xl text-xs">Batal</button>
-                <button onclick="confirmOtpSubmission()" class="flex-1 bg-rms-green text-white font-bold py-2.5 rounded-xl text-xs shadow">Verifikasi</button>
-            </div>
-        </div>
-    </div>
+    <div id="toast-container" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] space-y-2"></div>
 
-    <div id="toast-container" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] space-y-2 print:hidden"></div>
-
-    <!-- LOGIKA SISTEM TERPADU -->
-    <script>
-        const SUPABASE_URL = "https://hihhduyzosdrzbvtxsts.supabase.co";
-        const SUPABASE_ANON_KEY = "sb_publishable_FR47_uA2_HAesqrPGvzmoA_n0KL358W";
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        const PUBLIC_URL = "https://Kelompoktani.github.io/Riau-Mandiri-Sejaterah/";
-
-        const OWNER_EMAILS = ['arniusputra6895@gmail.com', 'arniussimarmata@gmail.com'];
-        const OWNER_PASSWORDS = ['@Simarmata28', 'admin123'];
-
-        let dbAdmins = [
-            { id: '1', name: 'Arnius Simarmata', email: 'arniussimarmata@gmail.com', pass: '@Simarmata28' },
-            { id: '2', name: 'Arnius Putra', email: 'arniusputra6895@gmail.com', pass: '@Simarmata28' }
-        ];
-        
-        let dbMembers = [
-            { id: '1', noAnggota: 'RMS-849201', name: 'Arnius Simarmata', nik: '1404142801980001', role: 'Ketua Kelompok Tani', phone: '082383301041', loper: 'Pekanbaru / Indragiri' }
-        ];
-        let dbFinance = [];
-        let currentUser = JSON.parse(localStorage.getItem('rms_current_user')) || null;
-        let activeOtpCode = null;
-        let pendingAction = null;
-        let realtimeChannel = null;
-
-        function esc(str) {
-            if (str === null || str === undefined) return '';
-            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-        }
-
-        function fmtRp(n) {
-            return 'Rp ' + (Number(n) || 0).toLocaleString('id-ID');
-        }
-
-        function generateUniqueMemberNo() {
-            let uniqueNo = '';
-            let exists = true;
-            while (exists) {
-                const randomDigits = Math.floor(100000 + Math.random() * 900000);
-                uniqueNo = `RMS-${randomDigits}`;
-                exists = dbMembers.some(m => m.noAnggota === uniqueNo);
-            }
-            return uniqueNo;
-        }
-
-        function toast(msg, type = 'success') {
-            const c = document.getElementById('toast-container');
-            if (!c) return;
-            const t = document.createElement('div');
-            t.className = 'toast' + (type !== 'success' ? ' ' + type : '');
-            const icon = type === 'error' ? 'fa-circle-xmark' : type === 'warn' ? 'fa-triangle-exclamation' : 'fa-circle-check';
-            t.innerHTML = `<i class="fa-solid ${icon}"></i><span>${esc(msg)}</span>`;
-            c.appendChild(t);
-            setTimeout(() => {
-                t.style.opacity = '0'; t.style.transform = 'translateY(20px)'; t.style.transition = 'all 0.3s';
-                setTimeout(() => t.remove(), 300);
-            }, 2800);
-        }
-
-        async function scanKTPImage(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-            const status = document.getElementById('ocr-status');
-            status.classList.remove('hidden');
-            try {
-                const result = await Tesseract.recognize(file, 'ind');
-                const text = result.data.text;
-                const nikMatch = text.match(/\b\d{16}\b/);
-                if (nikMatch) document.getElementById('add-nik').value = nikMatch[0];
-                const lines = text.split('\n').filter(l => l.trim().length > 3);
-                if (lines.length > 0) {
-                    const possibleName = lines.find(l => /nama/i.test(l)) || lines[0];
-                    document.getElementById('add-name').value = possibleName.replace(/nama|:|nik/gi, '').trim();
-                }
-                toast('Berhasil membaca teks KTP/Dokumen!');
-            } catch (err) {
-                toast('Gagal memproses gambar, silakan isi manual', 'warn');
-            } finally {
-                status.classList.add('hidden');
-            }
-        }
-
-        window.onload = async function () {
-            await syncCloudData();
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const scanNoAnggota = urlParams.get('no_anggota');
-
-            if (scanNoAnggota) {
-                const foundMember = dbMembers.find(m => 
-                    (m.noAnggota && m.noAnggota.toUpperCase() === scanNoAnggota.toUpperCase()) ||
-                    (m.id && m.id.toUpperCase() === scanNoAnggota.toUpperCase())
-                );
-                if (foundMember) {
-                    currentUser = { role: 'member', ...foundMember };
-                    localStorage.setItem('rms_current_user', JSON.stringify(currentUser));
-                    toast(`Login otomatis berhasil: ${foundMember.name}`);
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                } else {
-                    toast('Nomor Anggota dari QR Code tidak ditemukan', 'error');
-                }
-            }
-
-            if (currentUser) renderApp();
-            subscribeRealtimeCloud();
-        };
-
-        function updateSyncBadge(text, ok) {
-            const textEl = document.getElementById('sync-text');
-            if (textEl) textEl.innerText = text;
-            const b = document.getElementById('sync-badge');
-            if (b) {
-                b.className = ok
-                    ? "bg-emerald-950/50 hover:bg-emerald-950/60 border border-amber-300/40 text-amber-200 text-[10px] sm:text-xs px-2.5 py-1.5 rounded-full font-semibold shadow backdrop-blur-sm transition active:scale-95 whitespace-nowrap"
-                    : "bg-amber-900/50 hover:bg-amber-900/60 border border-amber-400/40 text-amber-100 text-[10px] sm:text-xs px-2.5 py-1.5 rounded-full font-semibold shadow backdrop-blur-sm transition active:scale-95 whitespace-nowrap";
-            }
-        }
-
-        async function syncCloudData() {
-            updateSyncBadge('Menyinkronkan…', false);
-            try {
-                const { data, error } = await supabaseClient.from('rbm_data').select('*');
-                if (error) throw error;
-                if (data && data.length > 0) {
-                    data.forEach(row => {
-                        if (row.id === 'admins' && row.data) dbAdmins = row.data;
-                        if (row.id === 'members' && row.data) dbMembers = row.data;
-                        if (row.id === 'finance' && row.data) dbFinance = row.data;
-                    });
-                    updateSyncBadge('Cloud Online', true);
-                } else {
-                    await pushAllToCloud();
-                    updateSyncBadge('Cloud Online', true);
-                }
-                if (currentUser) renderApp();
-                else renderMemberListForMembers();
-            } catch (err) {
-                console.error('Sync error:', err);
-                updateSyncBadge('Offline', false);
-            }
-        }
-
-        async function pushAllToCloud() {
-            try {
-                localStorage.setItem('rms_current_user', JSON.stringify(currentUser));
-                await Promise.all([
-                    supabaseClient.from('rbm_data').upsert({ id: 'admins', data: dbAdmins }),
-                    supabaseClient.from('rbm_data').upsert({ id: 'members', data: dbMembers }),
-                    supabaseClient.from('rbm_data').upsert({ id: 'finance', data: dbFinance })
-                ]);
-            } catch (err) {
-                console.error('Push error:', err);
-            }
-        }
-
-        function subscribeRealtimeCloud() {
-            if (realtimeChannel) supabaseClient.removeChannel(realtimeChannel);
-            realtimeChannel = supabaseClient
-                .channel('public:rbm_data')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'rbm_data' }, async () => {
-                    await syncCloudData();
-                })
-                .subscribe();
-        }
-
-        function switchLoginTab(type) {
-            const aBtn = document.getElementById('tab-btn-admin');
-            const mBtn = document.getElementById('tab-btn-member');
-            const aForm = document.getElementById('form-login-admin');
-            const mForm = document.getElementById('form-login-member');
-            if (type === 'admin') {
-                aBtn.className = "flex-1 py-2.5 text-xs font-bold rounded-xl bg-rms-green text-white shadow-sm transition";
-                mBtn.className = "flex-1 py-2.5 text-xs font-bold rounded-xl text-slate-600 transition";
-                aForm.classList.remove('hidden'); mForm.classList.add('hidden');
-            } else {
-                mBtn.className = "flex-1 py-2.5 text-xs font-bold rounded-xl bg-rms-amber text-white shadow-sm transition";
-                aBtn.className = "flex-1 py-2.5 text-xs font-bold rounded-xl text-slate-600 transition";
-                mForm.classList.remove('hidden'); aForm.classList.add('hidden');
-            }
-        }
-
-        function handleLoginAdmin(e) {
-            e.preventDefault();
-            const email = document.getElementById('admin-email').value.trim().toLowerCase();
-            const pass = document.getElementById('admin-pass').value.trim();
-            const isOwner = OWNER_EMAILS.includes(email) && OWNER_PASSWORDS.includes(pass);
-            const found = dbAdmins.find(a => a.email.toLowerCase() === email && a.pass === pass);
-            if (isOwner || found) {
-                currentUser = { role: 'admin', name: (found?.name) || 'Owner', email };
-                localStorage.setItem('rms_current_user', JSON.stringify(currentUser));
-                renderApp();
-                toast('Berhasil masuk sebagai Pengurus');
-            } else {
-                toast('Email atau Kata Sandi salah', 'error');
-            }
-        }
-
-        function handleLoginMember(e) {
-            e.preventDefault();
-            const inputNo = document.getElementById('member-no-id').value.trim().toUpperCase();
-            const found = dbMembers.find(m => 
-                (m.noAnggota && m.noAnggota.toUpperCase() === inputNo) ||
-                (m.id && m.id.toUpperCase() === inputNo)
-            );
-            if (found) {
-                currentUser = { role: 'member', ...found };
-                localStorage.setItem('rms_current_user', JSON.stringify(currentUser));
-                renderApp();
-                toast(`Selamat datang, ${found.name.split(' ')[0]}`);
-            } else {
-                toast('Nomor Anggota Unik tidak ditemukan', 'error');
-            }
-        }
-
-        function logout() {
-            currentUser = null;
-            localStorage.removeItem('rms_current_user');
-            document.getElementById('view-login').classList.remove('hidden');
-            document.getElementById('view-admin-dashboard').classList.add('hidden');
-            document.getElementById('view-member-dashboard').classList.add('hidden');
-            const u = document.getElementById('user-info-section');
-            u.classList.add('hidden'); u.classList.remove('flex');
-            toast('Anda telah keluar');
-        }
-
-        function renderApp() {
-            document.getElementById('view-login').classList.add('hidden');
-            const u = document.getElementById('user-info-section');
-            u.classList.remove('hidden'); u.classList.add('flex');
-            document.getElementById('nav-username').innerText = currentUser.name;
-            if (currentUser.role === 'admin') {
-                document.getElementById('view-admin-dashboard').classList.remove('hidden');
-                document.getElementById('view-member-dashboard').classList.add('hidden');
-                renderMembersList(); renderFinanceList(); renderAdminsList(); populateECardDropdown();
-            } else {
-                document.getElementById('view-admin-dashboard').classList.add('hidden');
-                document.getElementById('view-member-dashboard').classList.remove('hidden');
-                renderMemberCard(); renderMemberFinanceView(); renderMemberListForMembers();
-            }
-        }
-
-        function switchAdminTab(tab) {
-            ['members','finance','admins'].forEach(t => {
-                document.getElementById(`admin-tab-${t}`).classList.remove('active');
-                document.getElementById(`content-admin-${t}`).classList.add('hidden');
-            });
-            document.getElementById(`admin-tab-${tab}`).classList.add('active');
-            document.getElementById(`content-admin-${tab}`).classList.remove('hidden');
-        }
-
-        function handleRoleChange() {
-            const role = document.getElementById('add-role').value;
-            const c = document.getElementById('seksi-field-container');
-            const inp = document.getElementById('add-seksi-name');
-            if (role === 'Seksi') { c.classList.remove('hidden'); inp.required = true; }
-            else { c.classList.add('hidden'); inp.required = false; }
-        }
-
-        async function handleAddMember(e) {
-            e.preventDefault();
-            const editId = document.getElementById('edit-member-id').value;
-            const name = document.getElementById('add-name').value.trim();
-            const nik = document.getElementById('add-nik').value.trim();
-            const baseRole = document.getElementById('add-role').value;
-            const phone = document.getElementById('add-phone').value.trim();
-            const loper = document.getElementById('add-loper-location').value.trim() || '-';
-            
-            if (!/^\d{16}$/.test(nik)) { toast('NIK harus 16 digit angka', 'error'); return; }
-            
-            let finalRole = baseRole;
-            if (baseRole === 'Seksi') {
-                const s = document.getElementById('add-seksi-name').value.trim();
-                finalRole = s ? `Seksi (${s})` : 'Seksi Bidang';
-            }
-            if (editId) {
-                const i = dbMembers.findIndex(m => m.id === editId);
-                if (i !== -1) {
-                    const existingNo = dbMembers[i].noAnggota || generateUniqueMemberNo();
-                    dbMembers[i] = { ...dbMembers[i], noAnggota: existingNo, name, nik, role: finalRole, phone, loper };
-                }
-                toast('Data anggota diperbarui');
-            } else {
-                const newMemberNo = generateUniqueMemberNo();
-                dbMembers.push({ id: Date.now().toString(), noAnggota: newMemberNo, name, nik, role: finalRole, phone, loper });
-                toast(`Anggota berhasil didaftarkan (${newMemberNo})`);
-            }
-            await pushAllToCloud();
-            renderMembersList(); renderMemberListForMembers(); populateECardDropdown(); cancelEditMember();
-        }
-
-        function populateECardDropdown() {
-            const select = document.getElementById('select-single-member-ecard');
-            if (!select) return;
-            select.innerHTML = '<option value="">-- Pilih Nama / Kode Unik --</option>' + 
-                dbMembers.map(m => `<option value="${m.id}">${esc(m.name)} (${esc(m.noAnggota || m.id || 'RMS-000000')})</option>`).join('');
-        }
-
-        function renderMembersList() {
-            const c = document.getElementById('members-list-container');
-            if (!dbMembers.length) {
-                c.innerHTML = `<div class="text-center py-8 text-slate-400"><i class="fa-solid fa-users-slash text-3xl mb-2 block"></i><p class="text-xs">Belum ada data anggota.</p></div>`;
-                return;
-            }
-            c.innerHTML = dbMembers.map(m => `
-                <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100/80 rounded-2xl gap-2">
-                    <div class="min-w-0">
-                        <h4 class="font-extrabold text-xs text-slate-800 truncate">
-                            ${esc(m.name)}
-                            <span class="text-[10px] bg-amber-100 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-md ml-1 font-bold font-mono">${esc(m.noAnggota || m.id || 'RMS-000000')}</span>
-                        </h4>
-                        <p class="text-[11px] text-slate-500 font-medium truncate">${esc(m.role)} · Telp: ${esc(m.phone || '-')} · Wilayah: ${esc(m.loper || '-')}</p>
-                    </div>
-                    <div class="flex items-center space-x-1 shrink-0">
-                        <button onclick="downloadSingleECard('${m.id}')" title="Unduh E-Card PDF Satuan" class="text-emerald-700 text-xs px-2.5 py-1.5 font-bold bg-emerald-50 hover:bg-emerald-100 rounded-lg transition border border-emerald-200"><i class="fa-solid fa-id-card mr-1"></i> E-Card</button>
-                        <button onclick="editMember('${m.id}')" class="text-amber-700 text-xs px-2 py-1.5 font-bold hover:bg-amber-100 rounded-lg transition"><i class="fa-solid fa-pen"></i></button>
-                        <button onclick="deleteMember('${m.id}')" class="text-rose-500 text-xs px-2 py-1.5 font-bold hover:bg-rose-50 rounded-lg shrink-0"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function generateCardHTML(m) {
-            const noNo = m.noAnggota || m.id || 'RMS-849201';
-            const qrUrl = PUBLIC_URL + "?no_anggota=" + encodeURIComponent(noNo);
-            return `
-                <div style="background: linear-gradient(135deg, #1E5E3A 0%, #0F3D24 100%); color: #ffffff; padding: 24px; border-radius: 24px; border: 3px solid #E5A93C; width: 340px; margin: 10px auto; font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; margin-bottom: 14px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <div style="width: 36px; height: 36px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 2px;">
-                                <img src="./logo.jpg" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />
-                            </div>
-                            <div>
-                                <p style="margin:0; font-size:9px; font-weight:800; color:#FDE68A; letter-spacing: 0.5px;">KELOMPOK TANI</p>
-                                <h3 style="margin:0; font-size:12px; font-weight:900; color:#ffffff;">RIAU MANDIRI SEJAHTERA</h3>
-                            </div>
-                        </div>
-                        <span style="background:#F59E0B; color:#0F3D24; font-size:9px; font-weight:900; padding:2px 8px; border-radius:99px;">E-CARD</span>
-                    </div>
-
-                    <div style="font-size: 11px; margin-bottom: 14px; line-height: 1.6;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span style="color:#A7F3D0;">Nama Anggota</span>
-                            <strong style="font-size:12px; color:#FDE68A;">${esc(m.name)}</strong>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span style="color:#A7F3D0;">Jabatan</span>
-                            <span style="background:rgba(255,255,255,0.15); padding:1px 6px; border-radius:4px; font-weight:bold;">${esc(m.role)}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span style="color:#A7F3D0;">Nomor Anggota Unik</span>
-                            <span style="font-family:monospace; color:#FDE68A; background:rgba(0,0,0,0.3); padding:1px 6px; border-radius:4px; font-weight:bold;">${esc(noNo)}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between;">
-                            <span style="color:#A7F3D0;">Wilayah</span>
-                            <strong>${esc(m.loper || '-')}</strong>
-                        </div>
-                    </div>
-
-                    <div style="background:#ffffff; padding:12px; border-radius:16px; text-align:center; color:#1E5E3A; border:2px solid #F59E0B;">
-                        <p style="margin:0 0 6px 0; font-size:9px; font-weight:900; letter-spacing:0.5px;">
-                            <i style="color:#D97706;">■</i> QR CODE IDENTITAS ANGGOTA
-                        </p>
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(qrUrl)}" style="width:130px; height:130px; display:block; margin:0 auto;" />
-                        <p style="margin:6px 0 0 0; font-size:8px; color:#64748b; font-weight:600;">
-                            Scan QR Code di atas dengan Kamera / Google Lens untuk masuk otomatis.
-                        </p>
-                    </div>
-                </div>`;
-        }
-
-        // UNDUH E-CARD SATUAN DENGAN PRINTER SIMULASI AKURAT
-        function downloadSingleECard(id) {
-            const m = dbMembers.find(x => x.id === id);
-            if (!m) return;
-            const area = document.getElementById('print-area');
-            area.innerHTML = generateCardHTML(m);
-            area.classList.remove('hidden');
-            window.print();
-            setTimeout(() => { area.classList.add('hidden'); area.innerHTML = ''; }, 1000);
-        }
-
-        function downloadSelectedSingleECard() {
-            const selectedId = document.getElementById('select-single-member-ecard').value;
-            if (!selectedId) { toast('Silakan pilih anggota terlebih dahulu dari daftar!', 'warn'); return; }
-            downloadSingleECard(selectedId);
-        }
-
-        // UNDUH SELURUH E-CARD SEKALIGUS (MASSAL)
-        function downloadAllECards() {
-            if (!dbMembers.length) { toast('Belum ada anggota untuk diunduh', 'warn'); return; }
-            if (confirm(`Unduh/Cetak semua ${dbMembers.length} E-Card anggota sekaligus?`)) {
-                const area = document.getElementById('print-area');
-                area.innerHTML = dbMembers.map(m => generateCardHTML(m)).join('<div style="page-break-after:always;"></div>');
-                area.classList.remove('hidden');
-                window.print();
-                setTimeout(() => { area.classList.add('hidden'); area.innerHTML = ''; }, 1000);
-            }
-        }
-
-        async function handleTransaction(e) {
-            e.preventDefault();
-            const type = document.getElementById('trx-type').value;
-            const amount = Number(document.getElementById('trx-amount').value);
-            const desc = document.getElementById('trx-desc').value.trim();
-            const fileInput = document.getElementById('trx-file');
-            
-            if (!amount || amount <= 0) { toast('Jumlah harus lebih dari 0', 'error'); return; }
-            
-            let proofUrl = null;
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                const fileExt = file.name.split('.').pop();
-                const fileName = `${Date.now()}.${fileExt}`;
-                const { data, error } = await supabaseClient.storage.from('proofs').upload(fileName, file);
-                if (!error) {
-                    const { data: urlData } = supabaseClient.storage.from('proofs').getPublicUrl(fileName);
-                    proofUrl = urlData.publicUrl;
-                }
-            }
-            
-            dbFinance.push({ id: Date.now().toString(), type, amount, desc, proofUrl, date: new Date().toISOString() });
-            await pushAllToCloud();
-            renderFinanceList(); renderMemberFinanceView();
-            e.target.reset();
-            toast('Transaksi & bukti dicatat');
-        }
-
-        function renderFinanceList() {
-            const c = document.getElementById('finance-list-container');
-            const monthFilter = document.getElementById('filter-month')?.value;
-            let list = dbFinance;
-            if (monthFilter) {
-                list = list.filter(t => t.date && t.date.startsWith(monthFilter));
-            }
-            if (!list.length) {
-                c.innerHTML = `<div class="text-center py-8 text-slate-400"><i class="fa-solid fa-receipt text-3xl mb-2 block"></i><p class="text-xs">Belum ada catatan kas.</p></div>`;
-            } else {
-                c.innerHTML = list.map(t => `
-                    <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100/80 rounded-2xl gap-2">
-                        <div class="min-w-0">
-                            <span class="text-[10px] font-black px-2 py-0.5 rounded-md ${t.type === 'Masuk' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">${esc(t.type)}</span>
-                            <span class="font-bold text-xs text-slate-800 ml-1.5">${esc(t.desc)}</span>
-                            <p class="text-[11px] font-extrabold text-slate-700 mt-0.5">${fmtRp(t.amount)}</p>
-                            ${t.proofUrl ? `<a href="${t.proofUrl}" target="_blank" class="text-[10px] text-blue-600 underline font-bold"><i class="fa-solid fa-paperclip"></i> Lihat Bukti</a>` : ''}
-                        </div>
-                        <button onclick="deleteTransaction('${t.id}')" class="text-rose-500 text-xs px-2 py-1.5 font-bold hover:bg-rose-50 rounded-lg shrink-0"><i class="fa-solid fa-trash"></i></button>
-                    </div>
-                `).join('');
-            }
-            const { income, expense, balance } = calcTotals();
-            document.getElementById('summary-income').innerText = fmtRp(income);
-            document.getElementById('summary-expense').innerText = fmtRp(expense);
-            document.getElementById('summary-balance').innerText = fmtRp(balance);
-        }
-
-        function renderMemberCard() {
-            const userNo = currentUser.noAnggota || currentUser.id || 'RMS-849201';
-            document.getElementById('member-card-name').innerText = currentUser.name || '-';
-            document.getElementById('member-card-role').innerText = currentUser.role || '-';
-            document.getElementById('member-card-no').innerText = userNo;
-            document.getElementById('member-card-loper').innerText = currentUser.loper || '-';
-            
-            const container = document.getElementById('qrcode-container');
-            if (!container) return;
-            container.innerHTML = '';
-
-            const targetUrl = PUBLIC_URL + "?no_anggota=" + encodeURIComponent(userNo);
-
-            if (typeof QRCode !== 'undefined') {
-                new QRCode(container, {
-                    text: targetUrl,
-                    width: 140,
-                    height: 140,
-                    colorDark: "#000000",
-                    colorLight: "#ffffff",
-                    correctLevel: QRCode.CorrectLevel.H
-                });
-            } else {
-                const img = document.createElement('img');
-                img.src = "https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=" + encodeURIComponent(targetUrl);
-                img.className = "w-35 h-35 mx-auto rounded-lg";
-                container.appendChild(img);
-            }
-        }
-
-        function renderMemberFinanceView() {
-            const { income, expense, balance } = calcTotals();
-            document.getElementById('member-summary-income').innerText = fmtRp(income);
-            document.getElementById('member-summary-expense').innerText = fmtRp(expense);
-            document.getElementById('member-summary-balance').innerText = fmtRp(balance);
-        }
-
-        function renderMemberListForMembers() {
-            const c = document.getElementById('member-view-members-list');
-            const total = document.getElementById('member-total-count');
-            if (total) total.innerText = `Total: ${dbMembers.length}`;
-            if (!c) return;
-            if (!dbMembers.length) { c.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Belum ada anggota.</p>`; return; }
-            c.innerHTML = dbMembers.map((m, i) => `
-                <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100/80 rounded-2xl gap-2">
-                    <div class="flex items-center space-x-2.5 min-w-0">
-                        <span class="w-6 h-6 bg-rms-green text-amber-300 rounded-lg flex items-center justify-center text-[10px] font-black shadow-sm shrink-0">${i + 1}</span>
-                        <h4 class="font-bold text-xs text-slate-800 truncate">${esc(m.name)} <span class="text-[10px] text-slate-400 font-mono">(${esc(m.noAnggota || m.id || 'RMS-000000')})</span></h4>
-                    </div>
-                    <span class="text-[10px] bg-amber-100 text-amber-900 border border-amber-200/60 font-bold px-2 py-0.5 rounded-lg shrink-0">${esc(m.role)}</span>
-                </div>
-            `).join('');
-        }
-
-        function exportFinanceReport(mode = 'table') {
-            const area = document.getElementById('print-area');
-            const monthFilter = document.getElementById('filter-month')?.value;
-            let list = dbFinance;
-            if (monthFilter) list = list.filter(t => t.date && t.date.startsWith(monthFilter));
-
-            if (mode === 'table') {
-                const rows = list.map((t, i) => `
-                    <tr><td>${i + 1}</td><td>${esc(t.type)}</td><td>${esc(t.desc)}</td><td style="text-align:right">${fmtRp(t.amount)}</td></tr>
-                `).join('');
-                const { income, expense, balance } = calcTotals();
-                area.innerHTML = `
-                    <h1>Laporan Keuangan Kas ${monthFilter ? 'Bulan ' + monthFilter : ''}</h1>
-                    <p class="report-meta">Kelompok Tani Riau Mandiri Sejahtera (RMS) · Dicetak ${new Date().toLocaleDateString('id-ID')}</p>
-                    <table>
-                        <thead><tr><th>#</th><th>Jenis</th><th>Keterangan</th><th style="text-align:right">Jumlah</th></tr></thead>
-                        <tbody>${rows || '<tr><td colspan="4" style="text-align:center">Belum ada transaksi</td></tr>'}</tbody>
-                        <tfoot>
-                            <tr class="total-row"><td colspan="3">Total Pemasukan</td><td style="text-align:right">${fmtRp(income)}</td></tr>
-                            <tr class="total-row"><td colspan="3">Total Pengeluaran</td><td style="text-align:right">${fmtRp(expense)}</td></tr>
-                            <tr class="total-row"><td colspan="3">Saldo Akhir</td><td style="text-align:right">${fmtRp(balance)}</td></tr>
-                        </tfoot>
-                    </table>`;
-            } else {
-                const proofsHtml = list.filter(t => t.proofUrl).map((t, i) => `
-                    <div style="margin-bottom:20px; border-bottom:1px solid #ccc; padding-bottom:10px;">
-                        <h4>#${i + 1} ${esc(t.desc)} (${fmtRp(t.amount)})</h4>
-                        <img src="${t.proofUrl}" style="max-width:100%; max-height:400px; display:block; margin-top:5px;" />
-                    </div>
-                `).join('');
-                area.innerHTML = `
-                    <h1>Lampiran Bukti Transaksi ${monthFilter ? 'Bulan ' + monthFilter : ''}</h1>
-                    <p class="report-meta">Kelompok Tani Riau Mandiri Sejahtera (RMS) · Dicetak ${new Date().toLocaleDateString('id-ID')}</p>
-                    ${proofsHtml || '<p>Tidak ada lampiran bukti pada periode ini.</p>'}
-                `;
-            }
-            area.classList.remove('hidden');
-            window.print();
-            setTimeout(() => { area.classList.add('hidden'); area.innerHTML = ''; }, 1000);
-        }
-
-        function exportMemberReport() {
-            const area = document.getElementById('print-area');
-            const rows = dbMembers.map((m, i) => `
-                <tr><td>${i + 1}</td><td>${esc(m.noAnggota || m.id || 'RMS-000000')}</td><td>${esc(m.name)}</td><td>${esc(m.role)}</td><td>${esc(m.phone || '-')}</td><td>${esc(m.loper || '-')}</td></tr>
-            `).join('');
-            area.innerHTML = `
-                <h1>Laporan Daftar Anggota</h1>
-                <p class="report-meta">Kelompok Tani Riau Mandiri Sejahtera (RMS) · Dicetak ${new Date().toLocaleDateString('id-ID')}</p>
-                <table>
-                    <thead><tr><th>#</th><th>No. Anggota Unik</th><th>Nama</th><th>Jabatan</th><th>Telepon</th><th>Wilayah</th></tr></thead>
-                    <tbody>${rows}</tbody>
-                    <tfoot><tr class="total-row"><td colspan="6">Total: ${dbMembers.length} anggota</td></tr></tfoot>
-                </table>`;
-            area.classList.remove('hidden');
-            window.print();
-            setTimeout(() => { area.classList.add('hidden'); area.innerHTML = ''; }, 1000);
-        }
-    </script>
+    <script src="./app.js"></script>
 </body>
-                                                                                </html>
+</html>
