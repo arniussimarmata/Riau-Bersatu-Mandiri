@@ -38,7 +38,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -56,11 +55,13 @@
         .toast.error { background: #dc2626; }
         .toast.warn  { background: #D97706; }
         @keyframes toastIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* DESAIN CHIP PRINTING KARTU ID AKURAT */
         @media print {
-            @page { margin: 15mm; }
-            body * { visibility: hidden; }
-            #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+            body * { visibility: hidden !important; }
+            #print-area, #print-area * { visibility: visible !important; }
+            #print-area { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            @page { size: auto; margin: 10mm; }
         }
         #print-area h1 { font-size: 1.25rem; font-weight: 800; margin-bottom: 0.25rem; }
         #print-area .report-meta { font-size: 0.75rem; color: #64748b; margin-bottom: 1rem; }
@@ -233,23 +234,25 @@
                     </form>
                 </div>
 
-                <!-- PANEL UNDUH E-CARD PILIHAN ADMIN -->
+                <!-- PANEL PILIHAN UNDUH E-CARD -->
                 <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-card border border-amber-100/60">
                     <h3 class="font-extrabold text-sm sm:text-base text-rms-green mb-3">
                         <i class="fa-solid fa-id-card mr-1"></i> Pusat Unduh E-Card Anggota
                     </h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/50 p-4 rounded-2xl border border-amber-200/60 mb-4">
                         <div>
-                            <label class="form-label">Cari & Unduh Satuan Berdasarkan Nomor / Nama</label>
+                            <label class="form-label">Pilih Anggota Spesifik (Satuan)</label>
                             <div class="flex gap-2">
-                                <input type="text" id="search-ecard-input" placeholder="Misal: RMS-849201 atau RBM-001" class="form-input bg-white">
-                                <button onclick="downloadEcardBySearch()" class="bg-rms-green hover:bg-rms-lightgreen text-white px-4 py-2 rounded-xl text-xs font-bold transition shrink-0">
+                                <select id="select-single-member-ecard" class="form-input bg-white font-semibold">
+                                    <option value="">-- Pilih Nama / Kode Unik --</option>
+                                </select>
+                                <button onclick="downloadSelectedSingleECard()" class="bg-rms-green hover:bg-rms-lightgreen text-white px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1">
                                     <i class="fa-solid fa-download"></i> Unduh
                                 </button>
                             </div>
                         </div>
                         <div class="flex flex-col justify-end">
-                            <label class="form-label">Unduh Seluruh E-Card Anggota Sekaligus</label>
+                            <label class="form-label">Unduh Seluruh Anggota Sekaligus</label>
                             <button onclick="downloadAllECards()" class="bg-amber-600 hover:bg-amber-700 text-white w-full py-2.5 rounded-xl text-xs font-bold transition shadow flex items-center justify-center gap-1.5">
                                 <i class="fa-solid fa-file-zipper"></i> Unduh Semua E-Card (Massal)
                             </button>
@@ -465,7 +468,7 @@
         </section>
     </main>
 
-    <div id="print-area" class="hidden p-8 bg-white text-slate-900"></div>
+    <div id="print-area" class="hidden p-4 bg-white text-slate-900"></div>
 
     <footer class="bg-white border-t border-amber-100 py-4 text-center text-xs text-slate-400 mt-auto print:hidden">
         &copy; 2026 Kelompok Tani Riau Mandiri Sejahtera (RMS). All rights reserved.
@@ -726,7 +729,7 @@
             if (currentUser.role === 'admin') {
                 document.getElementById('view-admin-dashboard').classList.remove('hidden');
                 document.getElementById('view-member-dashboard').classList.add('hidden');
-                renderMembersList(); renderFinanceList(); renderAdminsList();
+                renderMembersList(); renderFinanceList(); renderAdminsList(); populateECardDropdown();
             } else {
                 document.getElementById('view-admin-dashboard').classList.add('hidden');
                 document.getElementById('view-member-dashboard').classList.remove('hidden');
@@ -780,7 +783,14 @@
                 toast(`Anggota berhasil didaftarkan (${newMemberNo})`);
             }
             await pushAllToCloud();
-            renderMembersList(); renderMemberListForMembers(); cancelEditMember();
+            renderMembersList(); renderMemberListForMembers(); populateECardDropdown(); cancelEditMember();
+        }
+
+        function populateECardDropdown() {
+            const select = document.getElementById('select-single-member-ecard');
+            if (!select) return;
+            select.innerHTML = '<option value="">-- Pilih Nama / Kode Unik --</option>' + 
+                dbMembers.map(m => `<option value="${m.id}">${esc(m.name)} (${esc(m.noAnggota || m.id || 'RMS-000000')})</option>`).join('');
         }
 
         function renderMembersList() {
@@ -799,7 +809,7 @@
                         <p class="text-[11px] text-slate-500 font-medium truncate">${esc(m.role)} · Telp: ${esc(m.phone || '-')} · Wilayah: ${esc(m.loper || '-')}</p>
                     </div>
                     <div class="flex items-center space-x-1 shrink-0">
-                        <button onclick="downloadSingleECard('${m.id}')" title="Unduh E-Card PDF" class="text-emerald-700 text-xs px-2.5 py-1.5 font-bold bg-emerald-50 hover:bg-emerald-100 rounded-lg transition border border-emerald-200"><i class="fa-solid fa-id-card mr-1"></i> E-Card</button>
+                        <button onclick="downloadSingleECard('${m.id}')" title="Unduh E-Card PDF Satuan" class="text-emerald-700 text-xs px-2.5 py-1.5 font-bold bg-emerald-50 hover:bg-emerald-100 rounded-lg transition border border-emerald-200"><i class="fa-solid fa-id-card mr-1"></i> E-Card</button>
                         <button onclick="editMember('${m.id}')" class="text-amber-700 text-xs px-2 py-1.5 font-bold hover:bg-amber-100 rounded-lg transition"><i class="fa-solid fa-pen"></i></button>
                         <button onclick="deleteMember('${m.id}')" class="text-rose-500 text-xs px-2 py-1.5 font-bold hover:bg-rose-50 rounded-lg shrink-0"><i class="fa-solid fa-trash"></i></button>
                     </div>
@@ -807,108 +817,81 @@
             `).join('');
         }
 
-        // FUNGSI UNDUH E-CARD SATUAN (PERSIS SEPERTI TAMPILAN DI GAMBAR)
+        function generateCardHTML(m) {
+            const noNo = m.noAnggota || m.id || 'RMS-849201';
+            const qrUrl = PUBLIC_URL + "?no_anggota=" + encodeURIComponent(noNo);
+            return `
+                <div style="background: linear-gradient(135deg, #1E5E3A 0%, #0F3D24 100%); color: #ffffff; padding: 24px; border-radius: 24px; border: 3px solid #E5A93C; width: 340px; margin: 10px auto; font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; margin-bottom: 14px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 36px; height: 36px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 2px;">
+                                <img src="./logo.jpg" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />
+                            </div>
+                            <div>
+                                <p style="margin:0; font-size:9px; font-weight:800; color:#FDE68A; letter-spacing: 0.5px;">KELOMPOK TANI</p>
+                                <h3 style="margin:0; font-size:12px; font-weight:900; color:#ffffff;">RIAU MANDIRI SEJAHTERA</h3>
+                            </div>
+                        </div>
+                        <span style="background:#F59E0B; color:#0F3D24; font-size:9px; font-weight:900; padding:2px 8px; border-radius:99px;">E-CARD</span>
+                    </div>
+
+                    <div style="font-size: 11px; margin-bottom: 14px; line-height: 1.6;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="color:#A7F3D0;">Nama Anggota</span>
+                            <strong style="font-size:12px; color:#FDE68A;">${esc(m.name)}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="color:#A7F3D0;">Jabatan</span>
+                            <span style="background:rgba(255,255,255,0.15); padding:1px 6px; border-radius:4px; font-weight:bold;">${esc(m.role)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="color:#A7F3D0;">Nomor Anggota Unik</span>
+                            <span style="font-family:monospace; color:#FDE68A; background:rgba(0,0,0,0.3); padding:1px 6px; border-radius:4px; font-weight:bold;">${esc(noNo)}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color:#A7F3D0;">Wilayah</span>
+                            <strong>${esc(m.loper || '-')}</strong>
+                        </div>
+                    </div>
+
+                    <div style="background:#ffffff; padding:12px; border-radius:16px; text-align:center; color:#1E5E3A; border:2px solid #F59E0B;">
+                        <p style="margin:0 0 6px 0; font-size:9px; font-weight:900; letter-spacing:0.5px;">
+                            <i style="color:#D97706;">■</i> QR CODE IDENTITAS ANGGOTA
+                        </p>
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(qrUrl)}" style="width:130px; height:130px; display:block; margin:0 auto;" />
+                        <p style="margin:6px 0 0 0; font-size:8px; color:#64748b; font-weight:600;">
+                            Scan QR Code di atas dengan Kamera / Google Lens untuk masuk otomatis.
+                        </p>
+                    </div>
+                </div>`;
+        }
+
+        // UNDUH E-CARD SATUAN DENGAN PRINTER SIMULASI AKURAT
         function downloadSingleECard(id) {
             const m = dbMembers.find(x => x.id === id);
             if (!m) return;
-            
-            const noNo = m.noAnggota || m.id || 'RMS-849201';
-            const qrUrl = PUBLIC_URL + "?no_anggota=" + encodeURIComponent(noNo);
-            
-            const element = document.createElement('div');
-            element.style.padding = '24px';
-            element.style.background = '#0F3D24';
-            element.style.backgroundImage = 'linear-gradient(135deg, #1E5E3A 0%, #0F3D24 100%)';
-            element.style.color = '#ffffff';
-            element.style.borderRadius = '24px';
-            element.style.fontFamily = "'Plus Jakarta Sans', sans-serif";
-            element.style.width = '360px';
-            element.style.boxSizing = 'border-box';
-            element.style.border = '3px solid #E5A93C';
-            
-            element.innerHTML = `
-                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 12px; margin-bottom: 16px;">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="width: 36px; height: 36px; background: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 2px;">
-                            <img src="./logo.jpg" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />
-                        </div>
-                        <div>
-                            <p style="margin:0; font-size:9px; font-weight:800; color:#FDE68A; letter-spacing:0.5px;">KELOMPOK TANI</p>
-                            <h3 style="margin:0; font-size:13px; font-weight:900; color:#ffffff;">RIAU MANDIRI SEJAHTERA</h3>
-                        </div>
-                    </div>
-                    <span style="background:#F59E0B; color:#0F3D24; font-size:9px; font-weight:900; padding:3px 8px; border-radius:99px;">E-CARD</span>
-                </div>
-                
-                <div style="font-size:11px; margin-bottom: 16px; line-height: 1.5;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                        <span style="color:#A7F3D0;">Nama Anggota</span>
-                        <strong style="font-size:13px; color:#FDE68A; text-align:right;">${esc(m.name)}</strong>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                        <span style="color:#A7F3D0;">Jabatan</span>
-                        <span style="background:rgba(255,255,255,0.15); padding:1px 6px; border-radius:4px; font-weight:bold;">${esc(m.role)}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                        <span style="color:#A7F3D0;">Nomor Anggota Unik</span>
-                        <span style="font-family:monospace; color:#FDE68A; background:rgba(0,0,0,0.3); padding:1px 6px; border-radius:4px; font-weight:bold;">${esc(noNo)}</span>
-                    </div>
-                    <div style="display: flex; justify-content: space-between;">
-                        <span style="color:#A7F3D0;">Wilayah</span>
-                        <strong style="text-align:right;">${esc(m.loper || '-')}</strong>
-                    </div>
-                </div>
-
-                <div style="background:#ffffff; padding:16px; border-radius:16px; text-align:center; color:#1E5E3A; border:2px solid #F59E0B;">
-                    <p style="margin:0 0 8px 0; font-size:10px; font-weight:900; letter-spacing:0.5px;">
-                        <i style="color:#D97706;">■</i> QR CODE IDENTITAS ANGGOTA
-                    </p>
-                    <div style="display:inline-block; background:#fff; padding:4px;">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=130x130&data=${encodeURIComponent(qrUrl)}" style="width:130px; height:130px; display:block; margin:0 auto;" />
-                    </div>
-                    <p style="margin:8px 0 0 0; font-size:8px; color:#64748b; font-weight:600;">
-                        Scan QR Code di atas dengan Kamera / Google Lens untuk masuk otomatis.
-                    </p>
-                </div>
-            `;
-
-            const opt = {
-                margin:       0,
-                filename:     `E-Card_${m.name.replace(/\s+/g,'_')}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'px', format: [390, 520], orientation: 'portrait' }
-            };
-
-            html2pdf().set(opt).from(element).save();
+            const area = document.getElementById('print-area');
+            area.innerHTML = generateCardHTML(m);
+            area.classList.remove('hidden');
+            window.print();
+            setTimeout(() => { area.classList.add('hidden'); area.innerHTML = ''; }, 1000);
         }
 
-        // PENCARIAN E-CARD BERDASARKAN INPUT KODE / NAMA
-        function downloadEcardBySearch() {
-            const query = document.getElementById('search-ecard-input').value.trim().toUpperCase();
-            if (!query) { toast('Masukkan Nomor atau Nama Anggota terlebih dahulu', 'warn'); return; }
-            
-            const found = dbMembers.find(m => 
-                (m.noAnggota && m.noAnggota.toUpperCase().includes(query)) ||
-                (m.name && m.name.toUpperCase().includes(query)) ||
-                (m.id && m.id.toUpperCase() === query)
-            );
-            
-            if (found) {
-                downloadSingleECard(found.id);
-                toast(`Berhasil mengunduh E-Card: ${found.name}`);
-            } else {
-                toast('Anggota tidak ditemukan', 'error');
-            }
+        function downloadSelectedSingleECard() {
+            const selectedId = document.getElementById('select-single-member-ecard').value;
+            if (!selectedId) { toast('Silakan pilih anggota terlebih dahulu dari daftar!', 'warn'); return; }
+            downloadSingleECard(selectedId);
         }
 
+        // UNDUH SELURUH E-CARD SEKALIGUS (MASSAL)
         function downloadAllECards() {
             if (!dbMembers.length) { toast('Belum ada anggota untuk diunduh', 'warn'); return; }
-            if (confirm(`Unduh ${dbMembers.length} E-Card anggota sekaligus?`)) {
-                toast('Menyiapkan semua E-Card...');
-                dbMembers.forEach((m, idx) => {
-                    setTimeout(() => downloadSingleECard(m.id), idx * 800);
-                });
+            if (confirm(`Unduh/Cetak semua ${dbMembers.length} E-Card anggota sekaligus?`)) {
+                const area = document.getElementById('print-area');
+                area.innerHTML = dbMembers.map(m => generateCardHTML(m)).join('<div style="page-break-after:always;"></div>');
+                area.classList.remove('hidden');
+                window.print();
+                setTimeout(() => { area.classList.add('hidden'); area.innerHTML = ''; }, 1000);
             }
         }
 
@@ -1082,4 +1065,4 @@
         }
     </script>
 </body>
-</html>
+                                                                                </html>
