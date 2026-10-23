@@ -6,13 +6,35 @@
     <meta name="theme-color" content="#1E5E3A">
     <title>Kelompok Tani Riau Mandiri Sejahtera (RMS)</title>
 
-    <link rel="stylesheet" href="./style.css">
+    <!-- Tailwind CSS Play CDN (Stabil & Tanpa Build) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        rms: {
+                            green: '#1E5E3A',
+                            lightgreen: '#2D8A54',
+                            darkgreen: '#0F3D24',
+                            amber: '#D97706',
+                            gold: '#E5A93C',
+                            bg: '#FAF8F5'
+                        }
+                    },
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+
+    <!-- FontAwesome & Google Fonts -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- External Libraries -->
+    <!-- Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
@@ -20,15 +42,32 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .form-label { display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.375rem; }
+        .form-input { width: 100%; padding: 0.625rem 0.875rem; font-size: 0.8125rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; outline: none; background: rgba(248, 250, 252, 0.5); transition: all 0.15s; }
+        .form-input:focus { border-color: #1E5E3A; background: #fff; box-shadow: 0 0 0 2px rgba(30, 94, 58, 0.2); }
+        .admin-tab { flex: 1; padding: 0.625rem; font-size: 0.75rem; font-weight: 700; border-radius: 0.75rem; color: #475569; display: flex; align-items: center; justify-content: center; gap: 0.375rem; transition: all 0.2s; }
+        .admin-tab.active { background: #1E5E3A; color: #fff; box-shadow: 0 2px 8px -2px rgba(30, 94, 58, 0.4); }
+        .admin-tab.active i { color: #E5A93C; }
+        .stat-card { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0.75rem 0.5rem; border-radius: 1rem; border-width: 1px; text-align: center; gap: 0.125rem; }
+        .stat-label { font-size: 0.625rem; font-weight: 700; display: block; line-height: 1.2; }
+        .stat-value { font-size: 0.75rem; font-weight: 800; line-height: 1.2; word-break: break-all; }
+        .toast { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; border-radius: 0.75rem; background: #1E5E3A; color: #fff; font-size: 0.8125rem; font-weight: 600; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2); animation: toastIn 0.3s ease-out; max-width: 90vw; }
+        .toast.error { background: #dc2626; }
+        .toast.warn { background: #D97706; }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
 </head>
-<body class="bg-[#FAF8F5] text-slate-800 min-h-screen flex flex-col antialiased">
+<body class="bg-rms-bg text-slate-800 min-h-screen flex flex-col antialiased">
 
     <!-- HEADER -->
-    <header class="bg-gradient-to-r from-[#1E5E3A] to-[#2D8A54] text-white shadow-lg sticky top-0 z-50">
+    <header class="bg-gradient-to-r from-rms-green to-rms-lightgreen text-white shadow-lg sticky top-0 z-50">
         <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center gap-3">
             <div class="flex items-center space-x-3 min-w-0">
                 <div class="w-11 h-11 bg-white rounded-full p-0.5 shadow ring-2 ring-amber-300/70 flex items-center justify-center shrink-0 overflow-hidden">
-                    <img src="./logo.webp" onerror="this.onerror=null; this.src='./logo.jpg';" alt="Logo RMS" loading="lazy" class="w-full h-full object-cover rounded-full">
+                    <img src="./logo.jpg" onerror="this.onerror=null; this.src='./logo.png';" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
                 </div>
                 <div class="min-w-0">
                     <p class="font-bold text-[10px] sm:text-xs tracking-wider text-amber-300 leading-tight">KELOMPOK TANI</p>
@@ -54,12 +93,12 @@
 
         <!-- VIEW LOGIN -->
         <section id="view-login" class="max-w-md mx-auto mt-4 sm:mt-10">
-            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-amber-100/70">
+            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-md border border-amber-100/70">
                 <div class="text-center mb-6">
-                    <div class="w-24 h-24 bg-white rounded-full p-1 mx-auto mb-4 shadow-md ring-2 ring-emerald-800/20 flex items-center justify-center overflow-hidden">
-                        <img src="./logo.webp" onerror="this.onerror=null; this.src='./logo.jpg';" alt="Logo RMS" loading="lazy" class="w-full h-full object-cover rounded-full">
+                    <div class="w-24 h-24 bg-white rounded-full p-1 mx-auto mb-4 shadow-md ring-2 ring-rms-green/20 flex items-center justify-center overflow-hidden">
+                        <img src="./logo.jpg" onerror="this.onerror=null; this.src='./logo.png';" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
                     </div>
-                    <h2 class="font-extrabold text-lg text-emerald-800">Selamat Datang</h2>
+                    <h2 class="font-extrabold text-lg text-rms-green">Selamat Datang</h2>
                     <p class="text-xs text-slate-500 font-medium mt-1">Sistem Administrasi & Keuangan Terpadu</p>
                 </div>
 
@@ -72,7 +111,7 @@
                     </button>
                 </div>
 
-                <!-- LOGIN ADMIN (Supabase Auth) -->
+                <!-- LOGIN ADMIN -->
                 <form id="form-login-admin" onsubmit="handleLoginAdmin(event)" class="space-y-4">
                     <div>
                         <label class="form-label">Email Pengurus</label>
@@ -83,20 +122,20 @@
                         <input type="password" id="admin-pass" required placeholder="••••••••" class="form-input">
                     </div>
                     <button type="submit"
-                        class="w-full bg-gradient-to-r from-emerald-800 to-emerald-600 hover:opacity-95 text-white font-bold py-3 rounded-xl text-sm transition shadow-md">
+                        class="w-full bg-gradient-to-r from-rms-green to-rms-lightgreen hover:opacity-95 text-white font-bold py-3 rounded-xl text-sm transition shadow-md">
                         Masuk Pengurus
                     </button>
                 </form>
 
-                <!-- LOGIN ANGGOTA (Aman via Token/Nomor Unik & PIN) -->
+                <!-- LOGIN ANGGOTA -->
                 <form id="form-login-member" onsubmit="handleLoginMember(event)" class="space-y-4 hidden">
                     <div>
-                        <label class="form-label">Nomor Anggota / Token Kunci</label>
-                        <input type="text" id="member-no-id" required placeholder="RMS-849201"
+                        <label class="form-label">Nomor Anggota Unik</label>
+                        <input type="text" id="member-no-id" required placeholder="Contoh: RMS-849201"
                             class="w-full px-4 py-3 text-sm uppercase tracking-wider font-bold border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50/50 transition">
                     </div>
                     <div>
-                        <label class="form-label">PIN Keamanan (4-6 Digit, Opsional)</label>
+                        <label class="form-label">PIN Keamanan (Opsional)</label>
                         <input type="password" id="member-pin" placeholder="••••" maxlength="6" inputmode="numeric" class="form-input">
                     </div>
                     <button type="submit"
@@ -122,7 +161,7 @@
             <div id="content-admin-members" class="space-y-4">
                 <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-amber-100/60">
                     <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                        <h3 id="form-member-title" class="font-extrabold text-sm sm:text-base text-emerald-800">
+                        <h3 id="form-member-title" class="font-extrabold text-sm sm:text-base text-rms-green">
                             <i class="fa-solid fa-user-plus mr-1"></i> Pendaftaran Anggota Baru
                         </h3>
                         <label class="cursor-pointer bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition shadow flex items-center gap-1.5">
@@ -141,7 +180,7 @@
                                 <input type="text" id="add-name" required placeholder="Nama lengkap" class="form-input">
                             </div>
                             <div>
-                                <label class="form-label">NIK (16 Digit - Rahasia & Terenkripsi)</label>
+                                <label class="form-label">NIK (16 Digit - Rahasia)</label>
                                 <input type="text" id="add-nik" required maxlength="16" inputmode="numeric" placeholder="16 digit NIK" class="form-input">
                             </div>
                         </div>
@@ -169,7 +208,7 @@
                         </div>
                         <div class="flex space-x-2 pt-1">
                             <button type="submit" id="btn-save-member"
-                                class="flex-1 bg-emerald-800 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow">
+                                class="flex-1 bg-rms-green hover:bg-rms-lightgreen text-white font-bold py-2.5 rounded-xl text-sm transition shadow">
                                 Simpan Anggota Baru
                             </button>
                             <button type="button" id="btn-cancel-edit-member" onclick="cancelEditMember()"
@@ -180,9 +219,9 @@
                     </form>
                 </div>
 
-                <!-- PUSAT UNDUH E-CARD ANGGOTA -->
+                <!-- PUSAT UNDUH E-CARD -->
                 <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-amber-100/60">
-                    <h3 class="font-extrabold text-sm sm:text-base text-emerald-800 mb-3">
+                    <h3 class="font-extrabold text-sm sm:text-base text-rms-green mb-3">
                         <i class="fa-solid fa-id-card mr-1"></i> Pusat Unduh E-Card Anggota
                     </h3>
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/50 p-4 rounded-2xl border border-amber-200/60 mb-4">
@@ -192,7 +231,7 @@
                                 <select id="select-single-member-ecard" class="form-input bg-white font-semibold">
                                     <option value="">-- Pilih Anggota --</option>
                                 </select>
-                                <button onclick="downloadSelectedSingleECard()" class="bg-emerald-800 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1 shadow">
+                                <button onclick="downloadSelectedSingleECard()" class="bg-rms-green hover:bg-rms-lightgreen text-white px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1 shadow">
                                     <i class="fa-solid fa-download"></i> Unduh
                                 </button>
                             </div>
@@ -207,7 +246,7 @@
 
                     <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
                         <h4 class="font-extrabold text-sm text-slate-800">
-                            <i class="fa-solid fa-address-book text-emerald-800 mr-1"></i> Daftar Anggota Terdaftar
+                            <i class="fa-solid fa-address-book text-rms-green mr-1"></i> Daftar Anggota
                         </h4>
                         <button onclick="exportMemberReport()"
                             class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 rounded-xl font-bold transition shadow flex items-center space-x-1.5">
@@ -231,7 +270,7 @@
                         <span class="stat-label text-rose-700">Total Keluar</span>
                         <span id="summary-expense" class="stat-value text-rose-800">Rp 0</span>
                     </div>
-                    <div class="stat-card bg-emerald-800 border-emerald-900 !text-white">
+                    <div class="stat-card bg-rms-green border-rms-darkgreen !text-white">
                         <i class="fa-solid fa-wallet text-amber-300"></i>
                         <span class="stat-label text-amber-200">Saldo Kas</span>
                         <span id="summary-balance" class="stat-value text-amber-300">Rp 0</span>
@@ -240,7 +279,7 @@
 
                 <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-amber-100/60">
                     <h3 class="font-extrabold text-sm sm:text-base text-slate-800 mb-3">
-                        <i class="fa-solid fa-pen-to-square text-emerald-800 mr-1"></i> Catat Kas & Unggah Bukti
+                        <i class="fa-solid fa-pen-to-square text-rms-green mr-1"></i> Catat Kas & Unggah Bukti
                     </h3>
                     <form onsubmit="handleTransaction(event)" class="space-y-3">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -265,7 +304,7 @@
                             <input type="file" id="trx-file" accept="image/*,.pdf" class="form-input bg-white">
                         </div>
                         <button type="submit"
-                            class="w-full bg-emerald-800 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition shadow">
+                            class="w-full bg-rms-green hover:bg-rms-lightgreen text-white font-bold py-3 rounded-xl text-sm transition shadow">
                             Simpan Catatan Kas
                         </button>
                     </form>
@@ -274,7 +313,7 @@
                 <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-amber-100/60">
                     <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
                         <h3 class="font-extrabold text-sm sm:text-base text-slate-800">
-                            <i class="fa-solid fa-clock-rotate-left text-emerald-800 mr-1"></i> Riwayat Kas
+                            <i class="fa-solid fa-clock-rotate-left text-rms-green mr-1"></i> Riwayat Kas
                         </h3>
                         <div class="flex items-center gap-2 flex-wrap">
                             <input type="month" id="filter-month" onchange="renderFinanceList()" class="text-xs p-1.5 border border-slate-200 rounded-lg">
@@ -291,11 +330,11 @@
 
         <!-- VIEW MEMBER DASHBOARD -->
         <section id="view-member-dashboard" class="hidden space-y-5">
-            <div id="member-card-render-area" class="bg-gradient-to-br from-[#1E5E3A] via-[#0F3D24] to-[#1E5E3A] p-5 sm:p-7 rounded-3xl shadow-xl text-white relative overflow-hidden border border-amber-300/30">
+            <div id="member-card-render-area" class="bg-gradient-to-br from-rms-green via-rms-darkgreen to-rms-green p-5 sm:p-7 rounded-3xl shadow-xl text-white relative overflow-hidden border border-amber-300/30">
                 <div class="relative flex items-center justify-between border-b border-white/20 pb-3.5 mb-4">
                     <div class="flex items-center space-x-3">
                         <div class="w-11 h-11 bg-white rounded-full p-0.5 ring-1 ring-amber-300 flex items-center justify-center shrink-0 shadow overflow-hidden">
-                            <img src="./logo.webp" onerror="this.onerror=null; this.src='./logo.jpg';" alt="Logo RMS" loading="lazy" class="w-full h-full object-cover rounded-full">
+                            <img src="./logo.jpg" onerror="this.onerror=null; this.src='./logo.png';" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
                         </div>
                         <div>
                             <p class="font-extrabold text-[10px] tracking-wider text-amber-300">KELOMPOK TANI</p>
@@ -325,21 +364,21 @@
                 </div>
 
                 <div class="relative bg-white rounded-2xl p-4 text-center text-slate-800 shadow-lg border-2 border-amber-300">
-                    <p class="text-[11px] font-extrabold text-emerald-800 mb-3 uppercase tracking-wider">
+                    <p class="text-[11px] font-extrabold text-rms-green mb-3 uppercase tracking-wider">
                         <i class="fa-solid fa-qrcode mr-1 text-amber-500"></i> QR CODE IDENTITAS ANGGOTA
                     </p>
                     <div class="bg-white p-3 rounded-xl inline-block shadow-inner border border-slate-200">
                         <div id="qrcode-container" class="flex justify-center items-center"></div>
                     </div>
                     <p class="text-[10px] text-slate-500 font-medium mt-2">
-                        Scan QR Code di atas untuk autentikasi otomatis yang aman.
+                        Scan QR Code di atas dengan Kamera HP untuk masuk otomatis.
                     </p>
                 </div>
             </div>
 
             <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-amber-100/60">
                 <h3 class="font-extrabold text-sm sm:text-base text-slate-800 mb-3">
-                    <i class="fa-solid fa-chart-pie text-emerald-800 mr-1"></i> Ringkasan Kas Kelompok
+                    <i class="fa-solid fa-chart-pie text-rms-green mr-1"></i> Ringkasan Kas Kelompok
                 </h3>
                 <div class="grid grid-cols-3 gap-2">
                     <div class="stat-card bg-emerald-50 border-emerald-100">
@@ -350,7 +389,7 @@
                         <span class="stat-label text-rose-700">Keluar</span>
                         <span id="member-summary-expense" class="stat-value text-rose-800">Rp 0</span>
                     </div>
-                    <div class="stat-card bg-emerald-800 border-emerald-900 !text-white">
+                    <div class="stat-card bg-rms-green border-rms-darkgreen !text-white">
                         <span class="stat-label text-amber-200">Saldo Kas</span>
                         <span id="member-summary-balance" class="stat-value text-amber-300">Rp 0</span>
                     </div>
@@ -359,8 +398,8 @@
         </section>
     </main>
 
-    <!-- HIDDEN CONTAINER UNTUK RENDER IMAGE CANVAS E-CARD -->
-    <div id="export-card-hidden-area" class="fixed -left-[9999px] -top-[9999px]"></div>
+    <!-- CONTAINER TERSEMBUNYI DOWLOAD KARTU -->
+    <div id="export-card-hidden-area" style="position: fixed; left: -9999px; top: -9999px;"></div>
 
     <footer class="bg-white border-t border-amber-100 py-4 text-center text-xs text-slate-400 mt-auto">
         &copy; 2026 Kelompok Tani Riau Mandiri Sejahtera (RMS). All rights reserved.
@@ -368,6 +407,499 @@
 
     <div id="toast-container" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] space-y-2"></div>
 
-    <script src="./app.js"></script>
+    <!-- LOGIKA UTAMA APPS -->
+    <script>
+        const SUPABASE_URL = "https://hihhduyzosdrzbvtxsts.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_FR47_uA2_HAesqrPGvzmoA_n0KL358W";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const PUBLIC_URL = "https://Kelompoktani.github.io/Riau-Mandiri-Sejaterah/";
+
+        let dbMembers = [];
+        let dbFinance = [];
+        let currentUser = JSON.parse(localStorage.getItem('rms_current_user')) || null;
+
+        const esc = str => str ? String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '';
+        const fmtRp = n => 'Rp ' + (Number(n) || 0).toLocaleString('id-ID');
+        const safeLink = u => /^https:\/\//i.test(u) ? u : '#';
+
+        function toast(msg, type = 'success') {
+            const c = document.getElementById('toast-container');
+            if (!c) return;
+            const t = document.createElement('div');
+            t.className = 'toast' + (type !== 'success' ? ' ' + type : '');
+            const icon = type === 'error' ? 'fa-circle-xmark' : type === 'warn' ? 'fa-triangle-exclamation' : 'fa-circle-check';
+            t.innerHTML = `<i class="fa-solid ${icon}"></i><span>${esc(msg)}</span>`;
+            c.appendChild(t);
+            setTimeout(() => {
+                t.style.opacity = '0'; t.style.transform = 'translateY(20px)';
+                setTimeout(() => t.remove(), 300);
+            }, 2800);
+        }
+
+        async function syncCloudData() {
+            updateSyncBadge('Menyinkronkan…', false);
+            try {
+                const { data: members, error: errM } = await supabaseClient
+                    .from('members_public')
+                    .select('*')
+                    .order('created_at', { ascending: true });
+                if (errM) throw errM;
+                dbMembers = members || [];
+
+                const { data: finance, error: errF } = await supabaseClient
+                    .from('transactions')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                if (errF) throw errF;
+                dbFinance = finance || [];
+
+                updateSyncBadge('Cloud Online', true);
+                if (currentUser) renderApp();
+                else populateECardDropdown();
+            } catch (err) {
+                console.error('Sync error:', err);
+                updateSyncBadge('Offline', false);
+            }
+        }
+
+        function updateSyncBadge(text, ok) {
+            const textEl = document.getElementById('sync-text');
+            if (textEl) textEl.innerText = text;
+            const b = document.getElementById('sync-badge');
+            if (b) {
+                b.className = ok
+                    ? "bg-emerald-950/50 border border-amber-300/40 text-amber-200 text-[10px] sm:text-xs px-2.5 py-1.5 rounded-full font-semibold shadow backdrop-blur-sm"
+                    : "bg-amber-900/50 border border-amber-400/40 text-amber-100 text-[10px] sm:text-xs px-2.5 py-1.5 rounded-full font-semibold shadow backdrop-blur-sm";
+            }
+        }
+
+        async function handleLoginAdmin(e) {
+            e.preventDefault();
+            const email = document.getElementById('admin-email').value.trim();
+            const password = document.getElementById('admin-pass').value.trim();
+
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+
+                currentUser = { role: 'admin', email: data.user.email, name: data.user.email.split('@')[0] };
+                localStorage.setItem('rms_current_user', JSON.stringify(currentUser));
+                renderApp();
+                toast('Berhasil masuk sebagai Pengurus');
+            } catch (err) {
+                toast('Login Pengurus gagal: Email atau sandi salah', 'error');
+            }
+        }
+
+        async function handleLoginMember(e) {
+            e.preventDefault();
+            const inputNo = document.getElementById('member-no-id').value.trim();
+            const pin = document.getElementById('member-pin').value.trim() || null;
+
+            try {
+                const { data, error } = await supabaseClient.rpc('member_login', {
+                    p_no: inputNo,
+                    p_pin: pin
+                });
+
+                if (error || !data) {
+                    toast('Login gagal: Nomor anggota/PIN salah atau akun terkunci', 'error');
+                    return;
+                }
+
+                currentUser = { role: 'member', ...data };
+                localStorage.setItem('rms_current_user', JSON.stringify(currentUser));
+                renderApp();
+                toast(`Selamat datang, ${data.name}`);
+            } catch (err) {
+                toast('Terjadi kesalahan saat login anggota', 'error');
+            }
+        }
+
+        function logout() {
+            supabaseClient.auth.signOut();
+            currentUser = null;
+            localStorage.removeItem('rms_current_user');
+            document.getElementById('view-login').classList.remove('hidden');
+            document.getElementById('view-admin-dashboard').classList.add('hidden');
+            document.getElementById('view-member-dashboard').classList.add('hidden');
+            document.getElementById('user-info-section').classList.add('hidden');
+            toast('Anda telah keluar');
+        }
+
+        async function handleAddMember(e) {
+            e.preventDefault();
+            const editId = document.getElementById('edit-member-id').value;
+            const name = document.getElementById('add-name').value.trim();
+            const nik = document.getElementById('add-nik').value.trim();
+            const role = document.getElementById('add-role').value;
+            const phone = document.getElementById('add-phone').value.trim();
+            const loper = document.getElementById('add-loper-location').value.trim() || '-';
+
+            if (!/^\d{16}$/.test(nik)) { toast('NIK harus 16 digit angka', 'error'); return; }
+
+            try {
+                if (editId) {
+                    const { error: err1 } = await supabaseClient.from('members_public').update({ name, role, loper }).eq('id', editId);
+                    if (err1) throw err1;
+                    const { error: err2 } = await supabaseClient.from('members_private').update({ nik, phone }).eq('member_id', editId);
+                    if (err2) throw err2;
+                    toast('Data anggota diperbarui');
+                } else {
+                    const randomDigits = Math.floor(100000 + Math.random() * 900000);
+                    const no_anggota = `RMS-${randomDigits}`;
+                    const { data: newPub, error: err1 } = await supabaseClient.from('members_public').insert([{ no_anggota, name, role, loper }]).select().single();
+                    if (err1) throw err1;
+
+                    const { error: err2 } = await supabaseClient.from('members_private').insert([{ member_id: newPub.id, nik, phone }]);
+                    if (err2) throw err2;
+                    toast(`Anggota terdaftar (${no_anggota})`);
+                }
+                await syncCloudData();
+                cancelEditMember();
+            } catch (err) {
+                toast('Gagal menyimpan data anggota', 'error');
+            }
+        }
+
+        async function editMember(id) {
+            try {
+                const mPub = dbMembers.find(m => m.id === id);
+                if (!mPub) return;
+
+                const { data: mPriv, error } = await supabaseClient.from('members_private').select('*').eq('member_id', id).single();
+                if (error) throw error;
+
+                document.getElementById('edit-member-id').value = mPub.id;
+                document.getElementById('add-name').value = mPub.name;
+                document.getElementById('add-role').value = mPub.role;
+                document.getElementById('add-loper-location').value = mPub.loper;
+                document.getElementById('add-nik').value = mPriv.nik;
+                document.getElementById('add-phone').value = mPriv.phone;
+
+                document.getElementById('form-member-title').innerText = 'Edit Data Anggota';
+                document.getElementById('btn-save-member').innerText = 'Simpan Perubahan';
+                document.getElementById('btn-cancel-edit-member').classList.remove('hidden');
+            } catch (err) {
+                toast('Gagal mengambil data privat', 'error');
+            }
+        }
+
+        function cancelEditMember() {
+            document.getElementById('form-member-input').reset();
+            document.getElementById('edit-member-id').value = '';
+            document.getElementById('form-member-title').innerText = 'Pendaftaran Anggota Baru';
+            document.getElementById('btn-save-member').innerText = 'Simpan Anggota Baru';
+            document.getElementById('btn-cancel-edit-member').classList.add('hidden');
+        }
+
+        async function deleteMember(id) {
+            if (!confirm('Hapus anggota ini selamanya?')) return;
+            try {
+                const { error } = await supabaseClient.from('members_public').delete().eq('id', id);
+                if (error) throw error;
+                toast('Anggota berhasil dihapus');
+                await syncCloudData();
+            } catch (err) {
+                toast('Gagal menghapus anggota', 'error');
+            }
+        }
+
+        async function handleTransaction(e) {
+            e.preventDefault();
+            const type = document.getElementById('trx-type').value;
+            const amount = Number(document.getElementById('trx-amount').value);
+            const description = document.getElementById('trx-desc').value.trim();
+            const fileInput = document.getElementById('trx-file');
+
+            let proof_path = null;
+            if (fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const fileName = `${Date.now()}_${file.name}`;
+                
+                const { error: upErr } = await supabaseClient.storage.from('proofs').upload(fileName, file);
+                if (upErr) {
+                    toast('Upload bukti transaksi gagal!', 'error');
+                    return;
+                }
+                proof_path = fileName;
+            }
+
+            try {
+                const { error } = await supabaseClient.from('transactions').insert([{ type, amount, description, proof_path }]);
+                if (error) throw error;
+                toast('Transaksi berhasil dicatat');
+                e.target.reset();
+                await syncCloudData();
+            } catch (err) {
+                toast('Gagal mencatat transaksi', 'error');
+            }
+        }
+
+        async function deleteTransaction(id) {
+            if (!confirm('Hapus catatan kas ini?')) return;
+            try {
+                const { error } = await supabaseClient.from('transactions').delete().eq('id', id);
+                if (error) throw error;
+                toast('Transaksi dihapus');
+                await syncCloudData();
+            } catch (err) {
+                toast('Gagal menghapus transaksi', 'error');
+            }
+        }
+
+        async function downloadAllECardsZip() {
+            if (!dbMembers.length) { toast('Belum ada data anggota!', 'warn'); return; }
+            toast('Menyiapkan berkas ZIP massal...');
+
+            const zip = new JSZip();
+            const folder = zip.folder("E-Cards_RMS");
+
+            for (let i = 0; i < dbMembers.length; i++) {
+                const m = dbMembers[i];
+                const canvas = await generateCardCanvasElement(m);
+                const dataUrl = canvas.toDataURL("image/png");
+                const base64Data = dataUrl.replace(/^data:image\/(png|jpg);base64,/, "");
+                folder.file(`E-Card_${m.name.replace(/\s+/g,'_')}.png`, base64Data, { base64: true });
+            }
+
+            zip.generateAsync({ type: "blob" }).then(content => {
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(content);
+                a.download = `E-Cards_RMS_Massal.zip`;
+                a.click();
+                toast('ZIP Massal berhasil diunduh!');
+            });
+        }
+
+        function generateCardCanvasElement(m) {
+            return new Promise(resolve => {
+                const hiddenArea = document.getElementById('export-card-hidden-area');
+                const qrUrl = PUBLIC_URL + "?no_anggota=" + encodeURIComponent(m.no_anggota);
+
+                hiddenArea.innerHTML = `
+                    <div id="temp-card" style="width:380px; padding:24px; background:linear-gradient(135deg, #1E5E3A 0%, #0F3D24 100%); color:#ffffff; border-radius:24px; border:3px solid #E5A93C; font-family:'Plus Jakarta Sans', sans-serif;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:12px; margin-bottom:16px;">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <img src="./logo.jpg" style="width:38px; height:38px; border-radius:50%; object-fit:cover;" />
+                                <div>
+                                    <p style="margin:0; font-size:9px; font-weight:800; color:#FDE68A;">KELOMPOK TANI</p>
+                                    <h3 style="margin:0; font-size:13px; font-weight:900; color:#ffffff;">RIAU MANDIRI SEJAHTERA</h3>
+                                </div>
+                            </div>
+                            <span style="background:#F59E0B; color:#0F3D24; font-size:9px; font-weight:900; padding:3px 8px; border-radius:99px;">E-CARD</span>
+                        </div>
+                        <div style="font-size:12px; margin-bottom:16px; line-height:1.6;">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                                <span style="color:#A7F3D0;">Nama Anggota</span>
+                                <strong style="font-size:13px; color:#FDE68A;">${esc(m.name)}</strong>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                                <span style="color:#A7F3D0;">Jabatan</span>
+                                <span style="background:rgba(255,255,255,0.15); padding:1px 6px; border-radius:4px; font-weight:bold;">${esc(m.role)}</span>
+                            </div>
+                            <div style="display:flex; justify-content:space-between;">
+                                <span style="color:#A7F3D0;">Nomor Unik</span>
+                                <span style="font-family:monospace; color:#FDE68A; background:rgba(0,0,0,0.3); padding:1px 6px; border-radius:4px;">${esc(m.no_anggota)}</span>
+                            </div>
+                        </div>
+                        <div style="background:#ffffff; padding:16px; border-radius:16px; text-align:center;">
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(qrUrl)}" style="width:140px; height:140px; display:block; margin:0 auto;" />
+                        </div>
+                    </div>
+                `;
+
+                setTimeout(() => {
+                    html2canvas(document.getElementById('temp-card'), { scale: 2, useCORS: true }).then(canvas => {
+                        hiddenArea.innerHTML = '';
+                        resolve(canvas);
+                    });
+                }, 300);
+            });
+        }
+
+        function downloadSingleECard(id) {
+            const m = dbMembers.find(x => x.id === id);
+            if (!m) return;
+            toast('Mengunduh E-Card...');
+            generateCardCanvasElement(m).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `E-Card_${m.name.replace(/\s+/g,'_')}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                toast('Selesai diunduh!');
+            });
+        }
+
+        function downloadSelectedSingleECard() {
+            const selectedId = document.getElementById('select-single-member-ecard').value;
+            if (!selectedId) { toast('Pilih anggota terlebih dahulu', 'warn'); return; }
+            downloadSingleECard(selectedId);
+        }
+
+        function renderApp() {
+            document.getElementById('view-login').classList.add('hidden');
+            document.getElementById('user-info-section').classList.remove('hidden');
+            document.getElementById('user-info-section').classList.add('flex');
+            document.getElementById('nav-username').innerText = currentUser.name;
+
+            if (currentUser.role === 'admin') {
+                document.getElementById('view-admin-dashboard').classList.remove('hidden');
+                document.getElementById('view-member-dashboard').classList.add('hidden');
+                renderMembersList(); renderFinanceList(); populateECardDropdown();
+            } else {
+                document.getElementById('view-admin-dashboard').classList.add('hidden');
+                document.getElementById('view-member-dashboard').classList.remove('hidden');
+                renderMemberCard(); renderMemberFinanceView();
+            }
+        }
+
+        function switchLoginTab(type) {
+            const aBtn = document.getElementById('tab-btn-admin');
+            const mBtn = document.getElementById('tab-btn-member');
+            const aForm = document.getElementById('form-login-admin');
+            const mForm = document.getElementById('form-login-member');
+            if (type === 'admin') {
+                aBtn.classList.add('active'); mBtn.classList.remove('active');
+                aForm.classList.remove('hidden'); mForm.classList.add('hidden');
+            } else {
+                mBtn.classList.add('active'); aBtn.classList.remove('active');
+                mForm.classList.remove('hidden'); aForm.classList.add('hidden');
+            }
+        }
+
+        function switchAdminTab(tab) {
+            ['members','finance'].forEach(t => {
+                document.getElementById(`admin-tab-${t}`)?.classList.remove('active');
+                document.getElementById(`content-admin-${t}`)?.classList.add('hidden');
+            });
+            document.getElementById(`admin-tab-${tab}`).classList.add('active');
+            document.getElementById(`content-admin-${tab}`).classList.remove('hidden');
+        }
+
+        function populateECardDropdown() {
+            const select = document.getElementById('select-single-member-ecard');
+            if (!select) return;
+            select.innerHTML = '<option value="">-- Pilih Anggota --</option>' + 
+                dbMembers.map(m => `<option value="${m.id}">${esc(m.name)} (${esc(m.no_anggota)})</option>`).join('');
+        }
+
+        function renderMembersList() {
+            const c = document.getElementById('members-list-container');
+            if (!dbMembers.length) {
+                c.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Belum ada data anggota.</p>`;
+                return;
+            }
+            c.innerHTML = dbMembers.map(m => `
+                <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100/80 rounded-2xl gap-2">
+                    <div class="min-w-0">
+                        <h4 class="font-extrabold text-xs text-slate-800 truncate">
+                            ${esc(m.name)}
+                            <span class="text-[10px] bg-amber-100 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-md ml-1 font-bold font-mono">${esc(m.no_anggota)}</span>
+                        </h4>
+                        <p class="text-[11px] text-slate-500 font-medium truncate">${esc(m.role)} · Wilayah: ${esc(m.loper)}</p>
+                    </div>
+                    <div class="flex items-center space-x-1 shrink-0">
+                        <button onclick="downloadSingleECard('${m.id}')" class="text-rms-green text-xs px-2.5 py-1.5 font-bold bg-emerald-50 hover:bg-emerald-100 rounded-lg transition border border-emerald-200"><i class="fa-solid fa-id-card"></i></button>
+                        <button onclick="editMember('${m.id}')" class="text-amber-700 text-xs px-2.5 py-1.5 font-bold hover:bg-amber-100 rounded-lg transition"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteMember('${m.id}')" class="text-rose-500 text-xs px-2.5 py-1.5 font-bold hover:bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function renderFinanceList() {
+            const c = document.getElementById('finance-list-container');
+            if (!dbFinance.length) {
+                c.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Belum ada catatan kas.</p>`;
+                return;
+            }
+
+            let html = '';
+            for (let t of dbFinance) {
+                let signedUrl = '#';
+                if (t.proof_path) {
+                    const { data } = await supabaseClient.storage.from('proofs').createSignedUrl(t.proof_path, 3600);
+                    if (data) signedUrl = data.signedUrl;
+                }
+
+                html += `
+                    <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100/80 rounded-2xl gap-2">
+                        <div class="min-w-0">
+                            <span class="text-[10px] font-black px-2 py-0.5 rounded-md ${t.type === 'Masuk' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">${esc(t.type)}</span>
+                            <span class="font-bold text-xs text-slate-800 ml-1.5">${esc(t.description)}</span>
+                            <p class="text-[11px] font-extrabold text-slate-700 mt-0.5">${fmtRp(t.amount)}</p>
+                            ${t.proof_path ? `<a href="${safeLink(signedUrl)}" target="_blank" rel="noopener" class="text-[10px] text-blue-600 underline font-bold"><i class="fa-solid fa-paperclip"></i> Lihat Bukti (Private)</a>` : ''}
+                        </div>
+                        <button onclick="deleteTransaction('${t.id}')" class="text-rose-500 text-xs px-2 py-1.5 font-bold hover:bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `;
+            }
+            c.innerHTML = html;
+
+            const income = dbFinance.filter(t => t.type === 'Masuk').reduce((acc, t) => acc + Number(t.amount), 0);
+            const expense = dbFinance.filter(t => t.type === 'Keluar').reduce((acc, t) => acc + Number(t.amount), 0);
+            document.getElementById('summary-income').innerText = fmtRp(income);
+            document.getElementById('summary-expense').innerText = fmtRp(expense);
+            document.getElementById('summary-balance').innerText = fmtRp(income - expense);
+        }
+
+        async function renderMemberFinanceView() {
+            try {
+                const { data, error } = await supabaseClient.rpc('kas_summary');
+                if (error) throw error;
+                const income = data?.income || 0;
+                const expense = data?.expense || 0;
+                document.getElementById('member-summary-income').innerText = fmtRp(income);
+                document.getElementById('member-summary-expense').innerText = fmtRp(expense);
+                document.getElementById('member-summary-balance').innerText = fmtRp(income - expense);
+            } catch (err) {
+                console.error('Gagal memuat ringkasan kas', err);
+            }
+        }
+
+        function renderMemberCard() {
+            const userNo = currentUser.no_anggota || currentUser.id;
+            document.getElementById('member-card-name').innerText = currentUser.name || '-';
+            document.getElementById('member-card-role').innerText = currentUser.role || '-';
+            document.getElementById('member-card-no').innerText = userNo;
+            document.getElementById('member-card-loper').innerText = currentUser.loper || '-';
+            
+            const container = document.getElementById('qrcode-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const targetUrl = PUBLIC_URL + "?no_anggota=" + encodeURIComponent(userNo);
+            new QRCode(container, { text: targetUrl, width: 140, height: 140 });
+        }
+
+        function exportMemberReport() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text("Laporan Anggota Kelompok Tani RMS", 14, 15);
+            doc.autoTable({
+                startY: 20,
+                head: [['#', 'No. Anggota', 'Nama Anggota', 'Jabatan', 'Wilayah']],
+                body: dbMembers.map((m, i) => [i + 1, m.no_anggota, m.name, m.role, m.loper])
+            });
+            doc.save('Laporan_Anggota_RMS.pdf');
+        }
+
+        function exportFinanceReport() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text("Laporan Transaksi Kas Kelompok Tani RMS", 14, 15);
+            doc.autoTable({
+                startY: 20,
+                head: [['#', 'Jenis', 'Keterangan', 'Jumlah']],
+                body: dbFinance.map((t, i) => [i + 1, t.type, t.description, fmtRp(t.amount)])
+            });
+            doc.save('Laporan_Keuangan_RMS.pdf');
+        }
+
+        window.onload = async () => {
+            await syncCloudData();
+        };
+    </script>
 </body>
 </html>
