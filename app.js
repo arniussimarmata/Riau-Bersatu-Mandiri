@@ -1,367 +1,525 @@
-/* =========================================
-   KONFIGURASI SUPABASE (GANTI BAGIAN INI!)
-   ========================================= */
-const SUPABASE_URL = 'https://xxxxxx.supabase.co'; // GANTI URL SUPABASE KAMU
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // GANTI ANON KEY KAMU
-const PUBLIC_URL = window.location.origin + window.location.pathname;
+// CONFIG SUPABASE
+const SUPABASE_URL = "https://hihhduyzosdrzbvtxsts.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_FR47_uA2_HAesqrPGvzmoA_n0KL358W";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const PUBLIC_URL = "https://Kelompoktani.github.io/Riau-Mandiri-Sejaterah/";
 
-/* =========================================
-   STATE & HELPER
-   ========================================= */
-let allMembers = [];
-let currentUser = null;
+let dbMembers = [];
+let dbFinance = [];
+let currentUser = JSON.parse(localStorage.getItem('rms_current_user')) || null;
+
+// UTILITIES
+const esc = str => str ? String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') : '';
+const fmtRp = n => 'Rp ' + (Number(n) || 0).toLocaleString('id-ID');
+
+// SANITASI LINK BUKTI TRANSAKSI (Mencegah XSS & Link Jahat)
+const safeLink = u => /^https:\/\//i.test(u) ? u : '#';
 
 function toast(msg, type = 'success') {
     const c = document.getElementById('toast-container');
-    if(!c) return alert(msg);
+    if (!c) return;
     const t = document.createElement('div');
-    t.className = `toast ${type === 'error' ? 'error' : type === 'warn' ? 'warn' : ''}`;
-    // Pastikan class tailwind kamu mendukung ini, atau gunakan inline style
-    t.style.cssText = `background: ${type==='error'?'#e11d48':type==='warn'?'#d97706':'#065f46'}; color:white; padding:10px 20px; border-radius:10px; margin-top:10px; font-weight:bold; font-size:12px; display:flex; align-items:center; gap:8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: opacity 0.3s;`;
-    t.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-xmark' : 'fa-circle-check'}"></i> ${msg}`;
+    t.className = 'toast' + (type !== 'success' ? ' ' + type : '');
+    const icon = type === 'error' ? 'fa-circle-xmark' : type === 'warn' ? 'fa-triangle-exclamation' : 'fa-circle-check';
+    t.innerHTML = `<i class="fa-solid ${icon}"></i><span>${esc(msg)}</span>`;
     c.appendChild(t);
-    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
+    setTimeout(() => {
+        t.style.opacity = '0'; t.style.transform = 'translateY(20px)';
+        setTimeout(() => t.remove(), 300);
+    }, 2800);
 }
 
-function switchLoginTab(tab) {
-    document.getElementById('tab-btn-admin').classList.toggle('active', tab === 'admin');
-    document.getElementById('tab-btn-member').classList.toggle('active', tab === 'member');
-    document.getElementById('form-login-admin').classList.toggle('hidden', tab !== 'admin');
-    document.getElementById('form-login-member').classList.toggle('hidden', tab !== 'member');
+// DEBOUNCE SYNC CLOUD (Mencegah Pemanggilan Berulang dari Realtime)
+let syncTimeout = null;
+function syncCloudDataDebounced() {
+    clearTimeout(syncTimeout);
+    syncTimeout = setTimeout(syncCloudData, 400);
 }
 
-function switchAdminTab(tab) {
-    document.getElementById('admin-tab-members').classList.toggle('active', tab === 'members');
-    document.getElementById('admin-tab-finance').classList.toggle('active', tab === 'finance');
-    document.getElementById('content-admin-members').classList.toggle('hidden', tab !== 'members');
-    document.getElementById('content-admin-finance').classList.toggle('hidden', tab !== 'finance');
+async function syncCloudData() {
+    updateSyncBadge('Menyinkronkan…', false);
+    try {
+        // Ambil Data Anggota (Public Data saja untuk keamanan)
+        const { data: members, error: errM } = await supabaseClient
+            .from('members_public')
+            .select('*')
+            .order('created_at', { ascending: true });
+            
+        if (errM) throw errM;
+        dbMembers = members || [];
+
+        // Ambil Data Keuangan
+        const { data: finance, error: errF } = await supabaseClient
+            .from('transactions')
+            .select('*')
+            .order('created_at', { ascending: false });
+            
+        if (errF) throw errF;
+        dbFinance = finance || [];
+
+        updateSyncBadge('Cloud Online', true);
+        if (currentUser) renderApp();
+        else populateECardDropdown();
+    } catch (err) {
+        console.error('Sync error:', err);
+        updateSyncBadge('Offline', false);
+    }
 }
 
-/* =========================================
-   AUTH & LOGIN
-   ========================================= */
+function updateSyncBadge(text, ok) {
+    const textEl = document.getElementById('sync-text');
+    if (textEl) textEl.innerText = text;
+    const b = document.getElementById('sync-badge');
+    if (b) {
+        b.className = ok
+            ? "bg-emerald-950/50 border border-amber-300/40 text-amber-200 text-[10px] sm:text-xs px-2.5 py-1.5 rounded-full font-semibold shadow backdrop-blur-sm"
+            : "bg-amber-900/50 border border-amber-400/40 text-amber-100 text-[10px] sm:text-xs px-2.5 py-1.5 rounded-full font-semibold shadow backdrop-blur-sm";
+    }
+}
+
+// REALTIME SUBSCRIPTION
+function subscribeRealtimeCloud() {
+    supabaseClient
+        .channel('public:db_changes')
+        .on('postgres_changes', { event: '*', schema: 'public' }, () => syncCloudDataDebounced())
+        .subscribe();
+}
+
+// AUTHENTICATION (SUPABASE AUTH)
 async function handleLoginAdmin(e) {
     e.preventDefault();
-    const email = document.getElementById('admin-email').value;
-    const pass = document.getElementById('admin-pass').value;
-    const btn = e.target.querySelector('button[type="submit"]');
-    
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memeriksa...';
-    btn.disabled = true;
+    const email = document.getElementById('admin-email').value.trim();
+    const password = document.getElementById('admin-pass').value.trim();
 
-    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
-    
-    btn.innerHTML = 'Masuk Pengurus';
-    btn.disabled = false;
+    try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
 
-    if (error) return toast(error.message, 'error');
-    
-    currentUser = { type: 'admin', ...data.user };
-    document.getElementById('view-login').classList.add('hidden');
-    document.getElementById('view-admin-dashboard').classList.remove('hidden');
-    document.getElementById('user-info-section').classList.remove('hidden');
-    document.getElementById('user-info-section').classList.add('flex');
-    document.getElementById('nav-username').innerText = 'Admin';
-    
-    loadMembers();
-    toast('Login berhasil');
+        currentUser = { role: 'admin', email: data.user.email, name: data.user.email.split('@')[0] };
+        localStorage.setItem('rms_current_user', JSON.stringify(currentUser));
+        renderApp();
+        toast('Berhasil masuk sebagai Pengurus');
+    } catch (err) {
+        toast('Login Pengurus gagal: Kata sandi / email salah', 'error');
+    }
 }
 
 async function handleLoginMember(e) {
     e.preventDefault();
-    const no = document.getElementById('member-no-id').value;
-    const pin = document.getElementById('member-pin').value;
-    const btn = e.target.querySelector('button[type="submit"]');
+    const inputKey = document.getElementById('member-no-id').value.trim();
+    const pin = document.getElementById('member-pin').value.trim();
 
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memeriksa...';
-    btn.disabled = true;
+    const found = dbMembers.find(m => 
+        m.no_anggota.toUpperCase() === inputKey.toUpperCase() || 
+        m.token === inputKey || 
+        m.id === inputKey
+    );
 
-    // Panggil fungsi SQL RPC
-    const { data, error } = await sb.rpc('member_login', { p_no: no, p_pin: pin });
-    
-    btn.innerHTML = 'Masuk Anggota';
-    btn.disabled = false;
-
-    if (error || !data) return toast('Nomor anggota atau PIN salah', 'error');
-    
-    currentUser = { type: 'member', ...data };
-    localStorage.setItem('rms_token', data.token);
-    
-    document.getElementById('view-login').classList.add('hidden');
-    document.getElementById('view-member-dashboard').classList.remove('hidden');
-    document.getElementById('user-info-section').classList.remove('hidden');
-    document.getElementById('user-info-section').classList.add('flex');
-    document.getElementById('nav-username').innerText = data.name;
-    
-    renderMemberDashboard(data);
-    toast('Login berhasil');
+    if (found) {
+        if (found.pin && found.pin !== pin) {
+            toast('PIN Keamanan Salah!', 'error');
+            return;
+        }
+        currentUser = { role: 'member', ...found };
+        localStorage.setItem('rms_current_user', JSON.stringify(currentUser));
+        renderApp();
+        toast(`Selamat datang, ${found.name}`);
+    } else {
+        toast('Nomor Anggota / Token Kunci tidak ditemukan', 'error');
+    }
 }
 
 function logout() {
-    localStorage.removeItem('rms_token');
-    window.location.reload();
+    supabaseClient.auth.signOut();
+    currentUser = null;
+    localStorage.removeItem('rms_current_user');
+    document.getElementById('view-login').classList.remove('hidden');
+    document.getElementById('view-admin-dashboard').classList.add('hidden');
+    document.getElementById('view-member-dashboard').classList.add('hidden');
+    document.getElementById('user-info-section').classList.add('hidden');
+    toast('Anda telah keluar');
 }
 
-/* =========================================
-   DATA ANGGOTA (LOAD & RENDER)
-   ========================================= */
-async function loadMembers() {
-    const { data, error } = await sb.from('members_public').select('*').order('name');
-    if (error) return toast('Gagal memuat data anggota', 'error');
-    
-    allMembers = data || [];
-    
-    // Isi Dropdown Unduh Satuan
-    const sel = document.getElementById('select-single-member-ecard');
-    if (sel) {
-        sel.innerHTML = '<option value="">-- Pilih Anggota --</option>';
-        allMembers.forEach(m => {
-            sel.innerHTML += `<option value="${m.id}">${m.name} (${m.no_anggota})</option>`;
-        });
-    }
+// CRUD MEMBER
+async function handleAddMember(e) {
+    e.preventDefault();
+    const editId = document.getElementById('edit-member-id').value;
+    const name = document.getElementById('add-name').value.trim();
+    const nik = document.getElementById('add-nik').value.trim();
+    const role = document.getElementById('add-role').value;
+    const phone = document.getElementById('add-phone').value.trim();
+    const loper = document.getElementById('add-loper-location').value.trim() || '-';
 
-    // Render List Anggota
-    const c = document.getElementById('members-list-container');
-    if (c) {
-        c.innerHTML = allMembers.length === 0 ? '<p class="text-xs text-slate-500">Belum ada data.</p>' : '';
-        allMembers.forEach(m => {
-            c.innerHTML += `
-                <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center mb-2">
-                    <div>
-                        <p class="font-bold text-sm text-emerald-900">${m.name}</p>
-                        <p class="text-xs text-slate-500">${m.no_anggota} • ${m.role}</p>
-                    </div>
-                    <button onclick="downloadCardById('${m.id}')" class="bg-emerald-100 text-emerald-800 hover:bg-emerald-200 px-3 py-1.5 rounded-lg text-xs font-bold transition">
-                        <i class="fa-solid fa-download"></i> PDF
-                    </button>
-                </div>
-            `;
-        });
-    }
-}
+    if (!/^\d{16}$/.test(nik)) { toast('NIK harus 16 digit angka', 'error'); return; }
 
-function renderMemberDashboard(m) {
-    if(document.getElementById('member-card-name')) document.getElementById('member-card-name').innerText = m.name;
-    if(document.getElementById('member-card-role')) document.getElementById('member-card-role').innerText = m.role;
-    if(document.getElementById('member-card-no')) document.getElementById('member-card-no').innerText = m.no_anggota;
-    if(document.getElementById('member-card-loper')) document.getElementById('member-card-loper').innerText = m.loper || '-';
-}
-
-/* =========================================
-   FITUR DOWNLOAD E-CARD (PDF & ZIP)
-   ========================================= */
-async function downloadSelectedSingleECard() {
-    const id = document.getElementById('select-single-member-ecard').value;
-    if (!id) return toast('Pilih anggota terlebih dahulu!', 'warn');
-    
-    const m = allMembers.find(x => x.id == id);
-    if (!m) return toast('Data tidak ditemukan', 'error');
-
-    toast('Menyiapkan PDF...');
     try {
-        const canvas = await buildCardCanvas(m);
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width, canvas.height] });
-
-        pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
-        pdf.save(`E-Card_${m.no_anggota}_${m.name}.pdf`);
-        toast('PDF berhasil diunduh');
-    } catch (err) {
-        toast('Gagal membuat PDF', 'error');
-        console.error(err);
-    }
-}
-
-async function downloadCardById(id) {
-    document.getElementById('select-single-member-ecard').value = id;
-    downloadSelectedSingleECard();
-}
-
-async function downloadAllECardsZip() {
-    if (allMembers.length === 0) return toast('Belum ada data anggota', 'warn');
-    toast(`Memproses ${allMembers.length} E-Card... Mohon tunggu.`);
-    
-    const { jsPDF } = window.jspdf;
-    const zip = new JSZip();
-    
-    for (let i = 0; i < allMembers.length; i++) {
-        const m = allMembers[i];
-        try {
-            const canvas = await buildCardCanvas(m);
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            
-            // Simpan JPG
-            const imgBase64 = imgData.split('base64,')[1];
-            zip.file(`${m.no_anggota}_${m.name}.jpg`, imgBase64, { base64: true });
-
-            // Simpan PDF
-            const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [canvas.width, canvas.height] });
-            pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
-            zip.file(`${m.no_anggota}_${m.name}.pdf`, pdf.output('blob'));
-        } catch (e) {
-            console.error('Gagal render:', m.name);
-        }
-    }
-
-    const content = await zip.generateAsync({ type: 'blob' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(content);
-    a.download = `E-Cards_Massal_RMS.zip`;
-    a.click();
-    toast('ZIP Massal berhasil diunduh');
-}
-
-/* =========================================
-   E-CARD CANVAS RENDERER
-   ========================================= */
-function rrect(ctx, x, y, w, h, r) {
-    ctx.beginPath(); ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
-}
-
-function loadImg(src) {
-    return new Promise(res => {
-        if (!src) return res(null);
-        const i = new Image(); i.crossOrigin = "Anonymous";
-        i.onload = () => res(i); i.onerror = () => res(null); i.src = src;
-    });
-}
-
-function fitFont(ctx, text, weight, size, family, maxW) {
-    let s = size; ctx.font = `${weight} ${s}px ${family}`;
-    while (ctx.measureText(text).width > maxW && s > 18) {
-        s -= 2; ctx.font = `${weight} ${s}px ${family}`;
-    }
-}
-
-// Generate QR Code lewat API publik (Aman untuk Canvas Export ke PDF)
-function qrDataUrl(text, size = 430) {
-    return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}`;
-}
-
-async function buildCardCanvas(m) {
-    const F = '"Plus Jakarta Sans", "Segoe UI", Arial, sans-serif';
-    try { await document.fonts.load(`900 36px "Plus Jakarta Sans"`); } catch (e) {}
-
-    const [logoImg, qrImg] = await Promise.all([
-        loadImg('./logo.webp'),
-        loadImg(qrDataUrl(`${PUBLIC_URL}?t=${m.token || m.no_anggota}`, 430))
-    ]);
-
-    const M = 30, W = 1080, H = 1540, PAD = 48;
-    const canvas = document.createElement('canvas');
-    canvas.width = W + M * 2; canvas.height = H + M * 2;
-    const ctx = canvas.getContext('2d');
-
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.translate(M, M); ctx.textBaseline = 'middle';
-
-    const g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, '#1E5E3A'); g.addColorStop(0.5, '#0F3D24'); g.addColorStop(1, '#1E5E3A');
-    rrect(ctx, 0, 0, W, H, 64); ctx.fillStyle = g; ctx.fill();
-    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(252,211,77,0.35)'; ctx.stroke();
-
-    const lx = PAD + 72, ly = 139;
-    ctx.beginPath(); ctx.arc(lx, ly, 72, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff'; ctx.fill();
-    ctx.lineWidth = 4; ctx.strokeStyle = '#FCD34D'; ctx.stroke();
-    if (logoImg) {
-        ctx.save(); ctx.beginPath(); ctx.arc(lx, ly, 66, 0, Math.PI * 2); ctx.clip();
-        const d = 132, sc = Math.max(d / logoImg.width, d / logoImg.height);
-        const w = logoImg.width * sc, h = logoImg.height * sc;
-        ctx.drawImage(logoImg, lx - w / 2, ly - h / 2, w, h); ctx.restore();
-    }
-
-    ctx.textAlign = 'left'; ctx.fillStyle = '#FCD34D'; ctx.font = `800 28px ${F}`;
-    ctx.fillText('KELOMPOK TANI', 236, 112);
-    ctx.fillStyle = '#ffffff'; fitFont(ctx, 'RIAU MANDIRI SEJAHTERA', 900, 38, F, 570);
-    ctx.fillText('RIAU MANDIRI SEJAHTERA', 236, 160);
-
-    rrect(ctx, W - PAD - 190, ly - 36, 190, 72, 36);
-    ctx.fillStyle = '#FBBF24'; ctx.fill();
-    ctx.fillStyle = '#052e16'; ctx.font = `900 30px ${F}`; ctx.textAlign = 'center';
-    ctx.fillText('E-CARD', W - PAD - 95, ly + 1);
-
-    ctx.beginPath(); ctx.moveTo(PAD, 252); ctx.lineTo(W - PAD, 252);
-    ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.stroke();
-
-    const rows = [
-        ['Nama Anggota', m.name || '-', 'name'],
-        ['Jabatan', m.role || '-', 'pill'],
-        ['Nomor Anggota Unik', m.no_anggota || '-', 'mono'],
-        ['Wilayah', m.loper || '-', 'plain']
-    ];
-    
-    rows.forEach(([label, val, kind], i) => {
-        const y = 335 + i * 86;
-        ctx.textAlign = 'left'; ctx.font = `500 34px ${F}`; ctx.fillStyle = '#A7F3D0';
-        ctx.fillText(label, PAD, y);
-        const maxW = (W - PAD * 2) - ctx.measureText(label).width - 50;
-        const right = W - PAD; ctx.textAlign = 'right';
-        
-        if (kind === 'name') {
-            fitFont(ctx, val, 800, 44, F, maxW); ctx.fillStyle = '#FDE68A'; ctx.fillText(val, right, y);
-        } else if (kind === 'plain') {
-            fitFont(ctx, val, 500, 36, F, maxW); ctx.fillStyle = '#ffffff'; ctx.fillText(val, right, y);
+        if (editId) {
+            // Update Public Info
+            const { error: err1 } = await supabaseClient.from('members_public').update({ name, role, loper }).eq('id', editId);
+            if (err1) throw err1;
+            // Update Private Info (NIK/Telp)
+            const { error: err2 } = await supabaseClient.from('members_private').update({ nik, phone }).eq('member_id', editId);
+            if (err2) throw err2;
+            toast('Data anggota diperbarui');
         } else {
-            const mono = kind === 'mono';
-            if (mono) { ctx.font = '700 36px "Courier New", monospace'; } 
-            else { fitFont(ctx, val, 700, 34, F, maxW - 44); }
-            const tw = ctx.measureText(val).width, bw = tw + 44;
-            rrect(ctx, right - bw, y - 31, bw, 62, 18);
-            ctx.fillStyle = mono ? 'rgba(0,0,0,0.28)' : 'rgba(255,255,255,0.12)'; ctx.fill();
-            ctx.fillStyle = mono ? '#FCD34D' : '#ffffff'; ctx.fillText(val, right - 22, y);
+            // Insert Public
+            const randomDigits = Math.floor(100000 + Math.random() * 900000);
+            const no_anggota = `RMS-${randomDigits}`;
+            const { data: newPub, error: err1 } = await supabaseClient.from('members_public').insert([{ no_anggota, name, role, loper }]).select().single();
+            if (err1) throw err1;
+
+            // Insert Private
+            const { error: err2 } = await supabaseClient.from('members_private').insert([{ member_id: newPub.id, nik, phone }]);
+            if (err2) throw err2;
+            toast(`Anggota terdaftar (${no_anggota})`);
         }
-    });
-
-    const by = 676, bh = 800;
-    rrect(ctx, PAD, by, W - PAD * 2, bh, 56); ctx.fillStyle = '#ffffff'; ctx.fill();
-    ctx.lineWidth = 6; ctx.strokeStyle = '#FCD34D'; ctx.stroke();
-
-    const title = 'QR CODE IDENTITAS ANGGOTA';
-    ctx.font = `800 32px ${F}`; const tw = ctx.measureText(title).width;
-    const startX = (W - (tw + 52)) / 2;
-    rrect(ctx, startX, by + 76 - 14, 28, 28, 6); ctx.fillStyle = '#F59E0B'; ctx.fill();
-    ctx.textAlign = 'left'; ctx.fillStyle = '#1E5E3A'; ctx.fillText(title, startX + 52, by + 76);
-
-    const fs = 510, fx = (W - fs) / 2, fy = by + 112;
-    rrect(ctx, fx, fy, fs, fs, 40); ctx.fillStyle = '#ffffff'; ctx.fill();
-    ctx.lineWidth = 3; ctx.strokeStyle = '#E2E8F0'; ctx.stroke();
-    if (qrImg) {
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(qrImg, fx + 40, fy + 40, 430, 430);
-        ctx.imageSmoothingEnabled = true;
+        await syncCloudData();
+        cancelEditMember();
+    } catch (err) {
+        toast('Gagal menyimpan data anggota', 'error');
     }
-
-    ctx.textAlign = 'center'; ctx.fillStyle = '#64748b'; ctx.font = `500 28px ${F}`;
-    ctx.fillText('Scan QR Code di atas dengan Kamera / Google Lens untuk', W / 2, fy + fs + 52);
-    ctx.fillText('masuk otomatis.', W / 2, fy + fs + 90);
-    ctx.fillStyle = '#94a3b8'; ctx.font = `600 25px ${F}`;
-    ctx.fillText('Jaga kerahasiaan kartu ini.', W / 2, fy + fs + 134);
-
-    return canvas;
 }
 
-/* =========================================
-   AUTO LOGIN (JIKA ADA TOKEN)
-   ========================================= */
-window.addEventListener('DOMContentLoaded', async () => {
-    const token = localStorage.getItem('rms_token');
-    if (token) {
-        const { data } = await sb.rpc('member_login_token', { p_token: token });
-        if (data) {
-            currentUser = { type: 'member', ...data };
-            document.getElementById('view-login').classList.add('hidden');
-            document.getElementById('view-member-dashboard').classList.remove('hidden');
-            document.getElementById('user-info-section').classList.remove('hidden');
-            document.getElementById('user-info-section').classList.add('flex');
-            document.getElementById('nav-username').innerText = data.name;
-            renderMemberDashboard(data);
-        }
+async function editMember(id) {
+    try {
+        const mPub = dbMembers.find(m => m.id === id);
+        if (!mPub) return;
+
+        // Ambil Data NIK & Telp Rahasia dari members_private
+        const { data: mPriv, error } = await supabaseClient.from('members_private').select('*').eq('member_id', id).single();
+        if (error) throw error;
+
+        document.getElementById('edit-member-id').value = mPub.id;
+        document.getElementById('add-name').value = mPub.name;
+        document.getElementById('add-role').value = mPub.role;
+        document.getElementById('add-loper-location').value = mPub.loper;
+        document.getElementById('add-nik').value = mPriv.nik;
+        document.getElementById('add-phone').value = mPriv.phone;
+
+        document.getElementById('form-member-title').innerText = 'Edit Data Anggota';
+        document.getElementById('btn-save-member').innerText = 'Simpan Perubahan';
+        document.getElementById('btn-cancel-edit-member').classList.remove('hidden');
+    } catch (err) {
+        toast('Gagal mengambil data privat (Hanya Admin)', 'error');
     }
-});
+}
+
+function cancelEditMember() {
+    document.getElementById('form-member-input').reset();
+    document.getElementById('edit-member-id').value = '';
+    document.getElementById('form-member-title').innerText = 'Pendaftaran Anggota Baru';
+    document.getElementById('btn-save-member').innerText = 'Simpan Anggota Baru';
+    document.getElementById('btn-cancel-edit-member').classList.add('hidden');
+}
+
+async function deleteMember(id) {
+    if (!confirm('Hapus anggota ini selamanya?')) return;
+    try {
+        const { error } = await supabaseClient.from('members_public').delete().eq('id', id);
+        if (error) throw error;
+        toast('Anggota berhasil dihapus');
+        await syncCloudData();
+    } catch (err) {
+        toast('Gagal menghapus anggota', 'error');
+    }
+}
+
+// TRANSAKSI KEUANGAN
+async function handleTransaction(e) {
+    e.preventDefault();
+    const type = document.getElementById('trx-type').value;
+    const amount = Number(document.getElementById('trx-amount').value);
+    const description = document.getElementById('trx-desc').value.trim();
+    const fileInput = document.getElementById('trx-file');
+
+    let proof_path = null;
+    if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const fileName = `${Date.now()}_${file.name}`;
+        
+        // Upload Bukti ke Private Bucket
+        const { data: upData, error: upErr } = await supabaseClient.storage.from('proofs').upload(fileName, file);
+        if (upErr) {
+            toast('Upload bukti transaksi gagal! Transaksi dibatalkan.', 'error');
+            return;
+        }
+        proof_path = fileName;
+    }
+
+    try {
+        const { error } = await supabaseClient.from('transactions').insert([{ type, amount, description, proof_path }]);
+        if (error) throw error;
+        toast('Transaksi berhasil dicatat');
+        e.target.reset();
+        await syncCloudData();
+    } catch (err) {
+        toast('Gagal mencatat transaksi', 'error');
+    }
+}
+
+async function deleteTransaction(id) {
+    if (!confirm('Hapus catatan kas ini?')) return;
+    try {
+        const { error } = await supabaseClient.from('transactions').delete().eq('id', id);
+        if (error) throw error;
+        toast('Transaksi dihapus');
+        await syncCloudData();
+    } catch (err) {
+        toast('Gagal menghapus transaksi', 'error');
+    }
+}
+
+// UNDUH ZIP MASSAL (JSZip)
+async function downloadAllECardsZip() {
+    if (!dbMembers.length) { toast('Belum ada data anggota!', 'warn'); return; }
+    toast('Menyiapkan berkas ZIP massal...');
+
+    const zip = new JSZip();
+    const folder = zip.folder("E-Cards_RMS");
+
+    for (let i = 0; i < dbMembers.length; i++) {
+        const m = dbMembers[i];
+        const canvas = await generateCardCanvasElement(m);
+        const dataUrl = canvas.toDataURL("image/png");
+        const base64Data = dataUrl.replace(/^data:image\/(png|jpg);base64,/, "");
+        folder.file(`E-Card_${m.name.replace(/\s+/g,'_')}.png`, base64Data, { base64: true });
+    }
+
+    zip.generateAsync({ type: "blob" }).then(content => {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(content);
+        a.download = `E-Cards_RMS_Massal.zip`;
+        a.click();
+        toast('ZIP Massal berhasil diunduh!');
+    });
+}
+
+function generateCardCanvasElement(m) {
+    return new Promise(resolve => {
+        const hiddenArea = document.getElementById('export-card-hidden-area');
+        const tokenKey = m.token || m.no_anggota;
+        const qrUrl = PUBLIC_URL + "?no_anggota=" + encodeURIComponent(tokenKey);
+
+        hiddenArea.innerHTML = `
+            <div id="temp-card" style="width:380px; padding:24px; background:linear-gradient(135deg, #1E5E3A 0%, #0F3D24 100%); color:#ffffff; border-radius:24px; border:3px solid #E5A93C; font-family:'Plus Jakarta Sans', sans-serif;">
+                <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid rgba(255,255,255,0.2); padding-bottom:12px; margin-bottom:16px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <img src="./logo.jpg" style="width:38px; height:38px; border-radius:50%; object-fit:cover;" />
+                        <div>
+                            <p style="margin:0; font-size:9px; font-weight:800; color:#FDE68A;">KELOMPOK TANI</p>
+                            <h3 style="margin:0; font-size:13px; font-weight:900; color:#ffffff;">RIAU MANDIRI SEJAHTERA</h3>
+                        </div>
+                    </div>
+                    <span style="background:#F59E0B; color:#0F3D24; font-size:9px; font-weight:900; padding:3px 8px; border-radius:99px;">E-CARD</span>
+                </div>
+                <div style="font-size:12px; margin-bottom:16px; line-height:1.6;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                        <span style="color:#A7F3D0;">Nama Anggota</span>
+                        <strong style="font-size:13px; color:#FDE68A;">${esc(m.name)}</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                        <span style="color:#A7F3D0;">Jabatan</span>
+                        <span style="background:rgba(255,255,255,0.15); padding:1px 6px; border-radius:4px; font-weight:bold;">${esc(m.role)}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span style="color:#A7F3D0;">Nomor Unik</span>
+                        <span style="font-family:monospace; color:#FDE68A; background:rgba(0,0,0,0.3); padding:1px 6px; border-radius:4px;">${esc(m.no_anggota)}</span>
+                    </div>
+                </div>
+                <div style="background:#ffffff; padding:16px; border-radius:16px; text-align:center;">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(qrUrl)}" style="width:140px; height:140px; display:block; margin:0 auto;" />
+                </div>
+            </div>
+        `;
+
+        setTimeout(() => {
+            html2canvas(document.getElementById('temp-card'), { scale: 2, useCORS: true }).then(canvas => {
+                hiddenArea.innerHTML = '';
+                resolve(canvas);
+            });
+        }, 300);
+    });
+}
+
+function downloadSingleECard(id) {
+    const m = dbMembers.find(x => x.id === id);
+    if (!m) return;
+    toast('Mengunduh E-Card...');
+    generateCardCanvasElement(m).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `E-Card_${m.name.replace(/\s+/g,'_')}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        toast('Selesai diunduh!');
+    });
+}
+
+function downloadSelectedSingleECard() {
+    const selectedId = document.getElementById('select-single-member-ecard').value;
+    if (!selectedId) { toast('Pilih anggota terlebih dahulu', 'warn'); return; }
+    downloadSingleECard(selectedId);
+}
+
+// RENDERING DAFTAR & NAVIGATION
+function renderApp() {
+    document.getElementById('view-login').classList.add('hidden');
+    document.getElementById('user-info-section').classList.remove('hidden');
+    document.getElementById('user-info-section').classList.add('flex');
+    document.getElementById('nav-username').innerText = currentUser.name;
+
+    if (currentUser.role === 'admin') {
+        document.getElementById('view-admin-dashboard').classList.remove('hidden');
+        document.getElementById('view-member-dashboard').classList.add('hidden');
+        renderMembersList(); renderFinanceList(); populateECardDropdown();
+    } else {
+        document.getElementById('view-admin-dashboard').classList.add('hidden');
+        document.getElementById('view-member-dashboard').classList.remove('hidden');
+        renderMemberCard(); renderMemberFinanceView();
+    }
+}
+
+function switchLoginTab(type) {
+    const aBtn = document.getElementById('tab-btn-admin');
+    const mBtn = document.getElementById('tab-btn-member');
+    const aForm = document.getElementById('form-login-admin');
+    const mForm = document.getElementById('form-login-member');
+    if (type === 'admin') {
+        aBtn.classList.add('active'); mBtn.classList.remove('active');
+        aForm.classList.remove('hidden'); mForm.classList.add('hidden');
+    } else {
+        mBtn.classList.add('active'); aBtn.classList.remove('active');
+        mForm.classList.remove('hidden'); aForm.classList.add('hidden');
+    }
+}
+
+function switchAdminTab(tab) {
+    ['members','finance'].forEach(t => {
+        document.getElementById(`admin-tab-${t}`)?.classList.remove('active');
+        document.getElementById(`content-admin-${t}`)?.classList.add('hidden');
+    });
+    document.getElementById(`admin-tab-${tab}`).classList.add('active');
+    document.getElementById(`content-admin-${tab}`).classList.remove('hidden');
+}
+
+function populateECardDropdown() {
+    const select = document.getElementById('select-single-member-ecard');
+    if (!select) return;
+    select.innerHTML = '<option value="">-- Pilih Anggota --</option>' + 
+        dbMembers.map(m => `<option value="${m.id}">${esc(m.name)} (${esc(m.no_anggota)})</option>`).join('');
+}
+
+function renderMembersList() {
+    const c = document.getElementById('members-list-container');
+    if (!dbMembers.length) {
+        c.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Belum ada data anggota.</p>`;
+        return;
+    }
+    c.innerHTML = dbMembers.map(m => `
+        <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100/80 rounded-2xl gap-2">
+            <div class="min-w-0">
+                <h4 class="font-extrabold text-xs text-slate-800 truncate">
+                    ${esc(m.name)}
+                    <span class="text-[10px] bg-amber-100 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-md ml-1 font-bold font-mono">${esc(m.no_anggota)}</span>
+                </h4>
+                <p class="text-[11px] text-slate-500 font-medium truncate">${esc(m.role)} · Wilayah: ${esc(m.loper)}</p>
+            </div>
+            <div class="flex items-center space-x-1 shrink-0">
+                <button onclick="downloadSingleECard('${m.id}')" class="text-emerald-800 text-xs px-2.5 py-1.5 font-bold bg-emerald-50 hover:bg-emerald-100 rounded-lg transition border border-emerald-200"><i class="fa-solid fa-id-card"></i></button>
+                <button onclick="editMember('${m.id}')" class="text-amber-700 text-xs px-2 py-1.5 font-bold hover:bg-amber-100 rounded-lg transition"><i class="fa-solid fa-pen"></i></button>
+                <button onclick="deleteMember('${m.id}')" class="text-rose-500 text-xs px-2 py-1.5 font-bold hover:bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function renderFinanceList() {
+    const c = document.getElementById('finance-list-container');
+    if (!dbFinance.length) {
+        c.innerHTML = `<p class="text-xs text-slate-400 text-center py-6">Belum ada catatan kas.</p>`;
+        return;
+    }
+
+    let html = '';
+    for (let t of dbFinance) {
+        let signedUrl = '#';
+        if (t.proof_path) {
+            // Ambil Signed URL sementara (1 jam) untuk Bucket Private
+            const { data } = await supabaseClient.storage.from('proofs').createSignedUrl(t.proof_path, 3600);
+            if (data) signedUrl = data.signedUrl;
+        }
+
+        html += `
+            <div class="flex items-center justify-between p-3 bg-amber-50/30 border border-amber-100/80 rounded-2xl gap-2">
+                <div class="min-w-0">
+                    <span class="text-[10px] font-black px-2 py-0.5 rounded-md ${t.type === 'Masuk' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">${esc(t.type)}</span>
+                    <span class="font-bold text-xs text-slate-800 ml-1.5">${esc(t.description)}</span>
+                    <p class="text-[11px] font-extrabold text-slate-700 mt-0.5">${fmtRp(t.amount)}</p>
+                    ${t.proof_path ? `<a href="${safeLink(signedUrl)}" target="_blank" rel="noopener" class="text-[10px] text-blue-600 underline font-bold"><i class="fa-solid fa-paperclip"></i> Lihat Bukti (Tergembok)</a>` : ''}
+                </div>
+                <button onclick="deleteTransaction('${t.id}')" class="text-rose-500 text-xs px-2 py-1.5 font-bold hover:bg-rose-50 rounded-lg"><i class="fa-solid fa-trash"></i></button>
+            </div>
+        `;
+    }
+    c.innerHTML = html;
+
+    const income = dbFinance.filter(t => t.type === 'Masuk').reduce((acc, t) => acc + Number(t.amount), 0);
+    const expense = dbFinance.filter(t => t.type === 'Keluar').reduce((acc, t) => acc + Number(t.amount), 0);
+    document.getElementById('summary-income').innerText = fmtRp(income);
+    document.getElementById('summary-expense').innerText = fmtRp(expense);
+    document.getElementById('summary-balance').innerText = fmtRp(income - expense);
+}
+
+function renderMemberCard() {
+    const userNo = currentUser.no_anggota || currentUser.id;
+    document.getElementById('member-card-name').innerText = currentUser.name || '-';
+    document.getElementById('member-card-role').innerText = currentUser.role || '-';
+    document.getElementById('member-card-no').innerText = userNo;
+    document.getElementById('member-card-loper').innerText = currentUser.loper || '-';
+    
+    const container = document.getElementById('qrcode-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const targetUrl = PUBLIC_URL + "?no_anggota=" + encodeURIComponent(currentUser.token || userNo);
+    new QRCode(container, { text: targetUrl, width: 140, height: 140 });
+}
+
+function renderMemberFinanceView() {
+    const income = dbFinance.filter(t => t.type === 'Masuk').reduce((acc, t) => acc + Number(t.amount), 0);
+    const expense = dbFinance.filter(t => t.type === 'Keluar').reduce((acc, t) => acc + Number(t.amount), 0);
+    document.getElementById('member-summary-income').innerText = fmtRp(income);
+    document.getElementById('member-summary-expense').innerText = fmtRp(expense);
+    document.getElementById('member-summary-balance').innerText = fmtRp(income - expense);
+}
+
+// EKSPOR LAPORAN PDF (jsPDF + autoTable)
+function exportMemberReport() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.text("Laporan Anggota Kelompok Tani RMS", 14, 15);
+    doc.autoTable({
+        startY: 20,
+        head: [['#', 'No. Anggota', 'Nama Anggota', 'Jabatan', 'Wilayah']],
+        body: dbMembers.map((m, i) => [i + 1, m.no_anggota, m.name, m.role, m.loper])
+    });
+    doc.save('Laporan_Anggota_RMS.pdf');
+}
+
+function exportFinanceReport() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.text("Laporan Transaksi Kas Kelompok Tani RMS", 14, 15);
+    doc.autoTable({
+        startY: 20,
+        head: [['#', 'Jenis', 'Keterangan', 'Jumlah']],
+        body: dbFinance.map((t, i) => [i + 1, t.type, t.description, fmtRp(t.amount)])
+    });
+    doc.save('Laporan_Keuangan_RMS.pdf');
+}
+
+// INITIALIZATION
+window.onload = async () => {
+    await syncCloudData();
+    subscribeRealtimeCloud();
+};
