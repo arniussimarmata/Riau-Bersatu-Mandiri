@@ -3,433 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#1E5E3A">
-    <title>Kelompok Tani Riau Mandiri Sejahtera (RMS)</title>
+    <title>E-Card RMS</title>
 
-    <!-- Tailwind (tanpa build) -->
+    <!-- Tailwind -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.4"></script>
-    <style type="text/tailwindcss">
-        @theme {
-            --color-rms-green: #1E5E3A;
-            --color-rms-lightgreen: #2D8A54;
-            --color-rms-darkgreen: #0F3D24;
-            --color-rms-amber: #D97706;
-            --color-rms-gold: #E5A93C;
-            --color-rms-bg: #FAF8F5;
-            --font-sans: 'Plus Jakarta Sans', sans-serif;
-        }
-
-        @layer base {
-            body {
-                font-family: 'Plus Jakarta Sans', sans-serif;
-                -webkit-tap-highlight-color: transparent;
-            }
-        }
-
-        @layer components {
-            .form-label {
-                @apply block text-xs font-semibold text-slate-700 mb-1.5;
-            }
-            .form-input {
-                @apply w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl outline-none bg-slate-50/50 transition focus:border-emerald-700 focus:bg-white focus:ring-2 focus:ring-emerald-700/20;
-            }
-            .admin-tab {
-                @apply flex-1 py-2.5 text-xs font-bold rounded-xl text-slate-600 flex items-center justify-center gap-1.5 transition;
-            }
-            .admin-tab.active {
-                @apply bg-emerald-800 text-white shadow-sm;
-            }
-            .admin-tab.active i {
-                @apply text-amber-400;
-            }
-            .stat-card {
-                @apply flex flex-col items-center justify-center p-3 rounded-2xl border text-center gap-0.5;
-            }
-            .stat-label {
-                @apply block text-[10px] font-bold leading-tight;
-            }
-            .stat-value {
-                @apply text-xs font-extrabold leading-tight break-all;
-            }
-            .toast {
-                @apply flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-800 text-white text-xs font-semibold shadow-xl transition-all duration-300 max-w-[90vw];
-                animation: toastIn 0.3s ease-out;
-            }
-            .toast.error {
-                @apply bg-rose-600;
-            }
-            .toast.warn {
-                @apply bg-amber-600;
-            }
-        }
-
-        @keyframes toastIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
-
+    
+    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Library pendukung -->
+    <!-- Library Supabase -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- Library PDF & ZIP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 </head>
-<body class="bg-[#FAF8F5] text-slate-800 min-h-screen flex flex-col antialiased">
+<body class="bg-[#FAF8F5] text-slate-800 min-h-screen p-4 flex flex-col items-center">
 
-    <!-- HEADER -->
-    <header class="bg-gradient-to-r from-[#1E5E3A] to-[#2D8A54] text-white shadow-lg sticky top-0 z-50">
-        <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center gap-3">
-            <div class="flex items-center space-x-3 min-w-0">
-                <div class="w-11 h-11 bg-white rounded-full p-0.5 shadow ring-2 ring-amber-300/70 flex items-center justify-center shrink-0 overflow-hidden">
-                    <img src="./logo.webp" onerror="this.onerror=null; this.src='./logo.jpg';" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
+    <div class="max-w-3xl w-full space-y-4">
+        
+        <!-- KOTAK PUSAT DOWNLOAD -->
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-amber-100/60 mt-10">
+            <h3 class="font-extrabold text-lg text-emerald-800 mb-4">
+                <i class="fa-solid fa-id-card mr-2"></i> Pusat Unduh E-Card Anggota
+            </h3>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-amber-50/50 p-4 rounded-2xl border border-amber-200/60 mb-6">
+                <!-- Download Satuan -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">1. Unduh Satuan (Pilih Anggota)</label>
+                    <div class="flex gap-2">
+                        <select id="select-single-member-ecard" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-xl outline-none focus:border-emerald-700">
+                            <option value="">-- Memuat data... --</option>
+                        </select>
+                        <button onclick="downloadSelectedSingleECard()" class="bg-emerald-800 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1 shadow">
+                            <i class="fa-solid fa-download"></i> Unduh PDF
+                        </button>
+                    </div>
                 </div>
-                <div class="min-w-0">
-                    <p class="font-bold text-[10px] sm:text-xs tracking-wider text-amber-300 leading-tight">KELOMPOK TANI</p>
-                    <h1 class="font-black text-xs sm:text-base leading-tight text-white truncate">Riau Mandiri Sejahtera</h1>
-                </div>
-            </div>
-            <div class="flex items-center space-x-2 shrink-0">
-                <button onclick="syncCloudData()" id="sync-badge"
-                    class="bg-emerald-950/40 hover:bg-emerald-950/60 border border-emerald-400/30 text-amber-200 text-[10px] sm:text-xs px-2.5 py-1.5 rounded-full font-semibold shadow backdrop-blur-sm transition active:scale-95 whitespace-nowrap">
-                    <i class="fa-solid fa-cloud mr-1"></i><span id="sync-text">Menghubungkan…</span>
-                </button>
-                <div id="user-info-section" class="hidden items-center space-x-2">
-                    <span id="nav-username" class="hidden sm:inline text-xs bg-emerald-900/70 px-2.5 py-1.5 rounded-lg font-semibold border border-emerald-600/30 max-w-[120px] truncate"></span>
-                    <button onclick="logout()" class="bg-rose-600 hover:bg-rose-700 text-white text-xs px-3 py-1.5 rounded-lg transition shadow font-semibold">
-                        <i class="fa-solid fa-right-from-bracket sm:mr-1"></i><span class="hidden sm:inline">Keluar</span>
+                
+                <!-- Download Massal -->
+                <div class="flex flex-col justify-end">
+                    <label class="block text-xs font-semibold text-slate-700 mb-1.5">2. Unduh Semua (ZIP Massal)</label>
+                    <button onclick="downloadAllECardsZip()" class="bg-amber-600 hover:bg-amber-700 text-white w-full py-2.5 rounded-xl text-xs font-bold transition shadow flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-file-zipper"></i> Unduh ZIP Massal (PDF & JPG)
                     </button>
                 </div>
             </div>
+
+            <!-- List Anggota -->
+            <h4 class="font-extrabold text-sm text-slate-800 mb-3">
+                <i class="fa-solid fa-address-book text-emerald-800 mr-1"></i> Daftar Anggota
+            </h4>
+            <div id="members-list-container" class="space-y-2"></div>
         </div>
-    </header>
 
-    <main class="max-w-5xl w-full mx-auto p-4 flex-grow">
+    </div>
 
-        <!-- VIEW LOGIN -->
-        <section id="view-login" class="max-w-md mx-auto mt-4 sm:mt-10">
-            <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-amber-100/70">
-                <div class="text-center mb-6">
-                    <div class="w-24 h-24 bg-white rounded-full p-1 mx-auto mb-4 shadow-md ring-2 ring-emerald-800/20 flex items-center justify-center overflow-hidden">
-                        <img src="./logo.webp" onerror="this.onerror=null; this.src='./logo.jpg';" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
-                    </div>
-                    <h2 class="font-extrabold text-lg text-emerald-800">Selamat Datang</h2>
-                    <p class="text-xs text-slate-500 font-medium mt-1">Sistem Administrasi &amp; Keuangan Terpadu</p>
-                </div>
-
-                <div class="flex bg-slate-100 p-1.5 rounded-2xl mb-6 border border-slate-200/60">
-                    <button onclick="switchLoginTab('admin')" id="tab-btn-admin" class="admin-tab active">
-                        <i class="fa-solid fa-user-shield"></i> Pengurus
-                    </button>
-                    <button onclick="switchLoginTab('member')" id="tab-btn-member" class="admin-tab">
-                        <i class="fa-solid fa-id-card"></i> Anggota
-                    </button>
-                </div>
-
-                <!-- LOGIN ADMIN (Supabase Auth) -->
-                <form id="form-login-admin" onsubmit="handleLoginAdmin(event)" class="space-y-4">
-                    <div>
-                        <label class="form-label">Email Pengurus</label>
-                        <input type="email" id="admin-email" required placeholder="admin@rms.com" autocomplete="username" class="form-input">
-                    </div>
-                    <div>
-                        <label class="form-label">Kata Sandi</label>
-                        <input type="password" id="admin-pass" required placeholder="••••••••" autocomplete="current-password" class="form-input">
-                    </div>
-                    <button type="submit"
-                        class="w-full bg-gradient-to-r from-emerald-800 to-emerald-600 hover:opacity-95 text-white font-bold py-3 rounded-xl text-sm transition shadow-md">
-                        Masuk Pengurus
-                    </button>
-                </form>
-
-                <!-- LOGIN ANGGOTA -->
-                <form id="form-login-member" onsubmit="handleLoginMember(event)" class="space-y-4 hidden">
-                    <div>
-                        <label class="form-label">Nomor Anggota</label>
-                        <input type="text" id="member-no-id" required placeholder="RMS-849201"
-                            class="w-full px-4 py-3 text-sm uppercase tracking-wider font-bold border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none bg-slate-50/50 transition">
-                    </div>
-                    <div>
-                        <label class="form-label">PIN Keamanan (4-6 Digit, isi jika sudah diberi PIN)</label>
-                        <input type="password" id="member-pin" placeholder="••••" maxlength="6" inputmode="numeric" class="form-input">
-                    </div>
-                    <button type="submit"
-                        class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:opacity-95 text-white font-bold py-3 rounded-xl text-sm transition shadow-md">
-                        Masuk Anggota
-                    </button>
-                </form>
-            </div>
-        </section>
-
-        <!-- VIEW ADMIN DASHBOARD -->
-        <section id="view-admin-dashboard" class="hidden space-y-5">
-            <div class="grid grid-cols-2 gap-2 bg-white p-2 rounded-2xl border border-amber-100/70 shadow-sm">
-                <button onclick="switchAdminTab('members')" id="admin-tab-members" class="admin-tab active">
-                    <i class="fa-solid fa-users"></i><span>Anggota</span>
-                </button>
-                <button onclick="switchAdminTab('finance')" id="admin-tab-finance" class="admin-tab">
-                    <i class="fa-solid fa-wallet"></i><span>Keuangan</span>
-                </button>
-            </div>
-
-            <!-- TAB ANGGOTA -->
-            <div id="content-admin-members" class="space-y-4">
-                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-amber-100/60">
-                    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                        <h3 id="form-member-title" class="font-extrabold text-sm sm:text-base text-emerald-800">
-                            <i class="fa-solid fa-user-plus mr-1"></i> Pendaftaran Anggota Baru
-                        </h3>
-                        <label class="cursor-pointer bg-amber-500 hover:bg-amber-600 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition shadow flex items-center gap-1.5">
-                            <i class="fa-solid fa-camera"></i> Scan KTP / Dokumen
-                            <input type="file" id="ktp-scanner-input" accept="image/*" class="hidden" onchange="scanKTPImage(event)">
-                        </label>
-                    </div>
-
-                    <p id="ocr-status" class="hidden text-xs text-amber-700 bg-amber-50 p-2 rounded-xl mb-3 font-semibold"><i class="fa-solid fa-spinner fa-spin mr-1"></i> Membaca teks KTP...</p>
-
-                    <form id="form-member-input" onsubmit="handleAddMember(event)" class="space-y-3">
-                        <input type="hidden" id="edit-member-id" value="">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label class="form-label">Nama Lengkap (Sesuai KTP)</label>
-                                <input type="text" id="add-name" required placeholder="Nama lengkap" class="form-input">
-                            </div>
-                            <div>
-                                <label class="form-label">NIK (16 Digit - Rahasia)</label>
-                                <input type="text" id="add-nik" required maxlength="16" inputmode="numeric" placeholder="16 digit NIK" class="form-input">
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div>
-                                <label class="form-label">Jabatan / Peran</label>
-                                <select id="add-role" class="form-input bg-white">
-                                    <option value="Anggota">Anggota Tani</option>
-                                    <option value="Loper">Loper / PJ Wilayah</option>
-                                    <option value="Ketua">Ketua Kelompok Tani</option>
-                                    <option value="Sekretaris">Sekretaris</option>
-                                    <option value="Bendahara">Bendahara</option>
-                                    <option value="Dewan Pendiri">Dewan Pendiri</option>
-                                    <option value="Dewan Pengawas">Dewan Pengawas</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="form-label">Telepon / WhatsApp</label>
-                                <input type="tel" id="add-phone" placeholder="08xxxxxxxxxx" class="form-input">
-                            </div>
-                            <div>
-                                <label class="form-label">Wilayah / Loper</label>
-                                <input type="text" id="add-loper-location" placeholder="Contoh: Indragiri" class="form-input">
-                            </div>
-                        </div>
-                        <div class="flex space-x-2 pt-1">
-                            <button type="submit" id="btn-save-member"
-                                class="flex-1 bg-emerald-800 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow">
-                                Simpan Anggota Baru
-                            </button>
-                            <button type="button" id="btn-cancel-edit-member" onclick="cancelEditMember()"
-                                class="hidden bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-4 py-2.5 rounded-xl text-sm transition">
-                                Batal
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- PUSAT UNDUH E-CARD ANGGOTA -->
-                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-amber-100/60">
-                    <h3 class="font-extrabold text-sm sm:text-base text-emerald-800 mb-3">
-                        <i class="fa-solid fa-id-card mr-1"></i> Pusat Unduh E-Card Anggota
-                    </h3>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/50 p-4 rounded-2xl border border-amber-200/60 mb-4">
-                        <div>
-                            <label class="form-label">1. Unduh E-Card Satuan (Pilih Anggota)</label>
-                            <div class="flex gap-2">
-                                <select id="select-single-member-ecard" class="form-input bg-white font-semibold">
-                                    <option value="">-- Pilih Anggota --</option>
-                                </select>
-                                <button onclick="downloadSelectedSingleECard()" class="bg-emerald-800 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1 shadow">
-                                    <i class="fa-solid fa-download"></i> Unduh
-                                </button>
-                            </div>
-                        </div>
-                        <div class="flex flex-col justify-end">
-                            <label class="form-label">2. Unduh Semua E-Card (ZIP Massal)</label>
-                            <button onclick="downloadAllECardsZip()" class="bg-amber-600 hover:bg-amber-700 text-white w-full py-2.5 rounded-xl text-xs font-bold transition shadow flex items-center justify-center gap-1.5">
-                                <i class="fa-solid fa-file-zipper"></i> Unduh ZIP Massal
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                        <h4 class="font-extrabold text-sm text-slate-800">
-                            <i class="fa-solid fa-address-book text-emerald-800 mr-1"></i> Daftar Anggota Terdaftar
-                        </h4>
-                        <button onclick="exportMemberReport()"
-                            class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 rounded-xl font-bold transition shadow flex items-center space-x-1.5">
-                            <i class="fa-solid fa-file-pdf"></i><span>Cetak Laporan PDF</span>
-                        </button>
-                    </div>
-                    <div id="members-list-container" class="space-y-2"></div>
-                </div>
-            </div>
-
-            <!-- TAB KEUANGAN -->
-            <div id="content-admin-finance" class="space-y-4 hidden">
-                <div class="grid grid-cols-3 gap-2 sm:gap-3">
-                    <div class="stat-card bg-emerald-50 border-emerald-100">
-                        <i class="fa-solid fa-arrow-down text-emerald-600"></i>
-                        <span class="stat-label text-emerald-700">Total Masuk</span>
-                        <span id="summary-income" class="stat-value text-emerald-800">Rp 0</span>
-                    </div>
-                    <div class="stat-card bg-rose-50 border-rose-100">
-                        <i class="fa-solid fa-arrow-up text-rose-600"></i>
-                        <span class="stat-label text-rose-700">Total Keluar</span>
-                        <span id="summary-expense" class="stat-value text-rose-800">Rp 0</span>
-                    </div>
-                    <div class="stat-card bg-emerald-800 border-emerald-900 !text-white">
-                        <i class="fa-solid fa-wallet text-amber-300"></i>
-                        <span class="stat-label text-amber-200">Saldo Kas</span>
-                        <span id="summary-balance" class="stat-value text-amber-300">Rp 0</span>
-                    </div>
-                </div>
-
-                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-amber-100/60">
-                    <h3 class="font-extrabold text-sm sm:text-base text-slate-800 mb-3">
-                        <i class="fa-solid fa-pen-to-square text-emerald-800 mr-1"></i> Catat Kas &amp; Unggah Bukti
-                    </h3>
-                    <form onsubmit="handleTransaction(event)" class="space-y-3">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label class="form-label">Jenis Transaksi</label>
-                                <select id="trx-type" class="form-input bg-white">
-                                    <option value="Masuk">Kas Masuk</option>
-                                    <option value="Keluar">Kas Keluar</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="form-label">Jumlah (Rp)</label>
-                                <input type="number" id="trx-amount" required min="1" placeholder="100000" class="form-input">
-                            </div>
-                        </div>
-                        <div>
-                            <label class="form-label">Keterangan</label>
-                            <input type="text" id="trx-desc" required placeholder="Misal: Pembelian Pupuk" class="form-input">
-                        </div>
-                        <div>
-                            <label class="form-label">Lampiran Bukti (Foto/Nota/PDF, maks 5 MB)</label>
-                            <input type="file" id="trx-file" accept="image/*,.pdf" class="form-input bg-white">
-                        </div>
-                        <button type="submit"
-                            class="w-full bg-emerald-800 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition shadow">
-                            Simpan Catatan Kas
-                        </button>
-                    </form>
-                </div>
-
-                <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-amber-100/60">
-                    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
-                        <h3 class="font-extrabold text-sm sm:text-base text-slate-800">
-                            <i class="fa-solid fa-clock-rotate-left text-emerald-800 mr-1"></i> Riwayat Kas
-                        </h3>
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <input type="month" id="filter-month" onchange="renderFinanceList()" class="text-xs p-1.5 border border-slate-200 rounded-lg">
-                            <button onclick="exportFinanceReport()"
-                                class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-2.5 py-1.5 rounded-lg font-bold transition shadow">
-                                <i class="fa-solid fa-file-invoice"></i> Cetak Kas PDF
-                            </button>
-                        </div>
-                    </div>
-                    <div id="finance-list-container" class="space-y-2"></div>
-                </div>
-            </div>
-        </section>
-
-        <!-- VIEW MEMBER DASHBOARD -->
-        <section id="view-member-dashboard" class="hidden space-y-5">
-            <div id="member-card-render-area" class="bg-gradient-to-br from-[#1E5E3A] via-[#0F3D24] to-[#1E5E3A] p-5 sm:p-7 rounded-3xl shadow-xl text-white relative overflow-hidden border border-amber-300/30">
-                <div class="relative flex items-center justify-between border-b border-white/20 pb-3.5 mb-4">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-11 h-11 bg-white rounded-full p-0.5 ring-1 ring-amber-300 flex items-center justify-center shrink-0 shadow overflow-hidden">
-                            <img src="./logo.webp" onerror="this.onerror=null; this.src='./logo.jpg';" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
-                        </div>
-                        <div>
-                            <p class="font-extrabold text-[10px] tracking-wider text-amber-300">KELOMPOK TANI</p>
-                            <h2 class="font-black text-xs sm:text-sm tracking-wide text-white">RIAU MANDIRI SEJAHTERA</h2>
-                        </div>
-                    </div>
-                    <span class="text-[10px] bg-amber-400 text-emerald-950 font-black px-2.5 py-1 rounded-full shadow">E-CARD</span>
-                </div>
-
-                <div class="relative space-y-2 text-xs mb-5">
-                    <div class="flex justify-between items-center gap-2">
-                        <span class="text-emerald-200">Nama Anggota</span>
-                        <span id="member-card-name" class="font-extrabold text-sm text-amber-200 text-right">-</span>
-                    </div>
-                    <div class="flex justify-between items-center gap-2">
-                        <span class="text-emerald-200">Jabatan</span>
-                        <span id="member-card-role" class="font-bold text-white bg-white/10 px-2 py-0.5 rounded-md text-right">-</span>
-                    </div>
-                    <div class="flex justify-between items-center gap-2">
-                        <span class="text-emerald-200">Nomor Anggota Unik</span>
-                        <span id="member-card-no" class="font-mono font-bold text-amber-300 bg-black/20 px-2 py-0.5 rounded-md">-</span>
-                    </div>
-                    <div class="flex justify-between items-center gap-2">
-                        <span class="text-emerald-200">Wilayah</span>
-                        <span id="member-card-loper" class="font-medium text-white text-right">-</span>
-                    </div>
-                </div>
-
-                <div class="relative bg-white rounded-2xl p-4 text-center text-slate-800 shadow-lg border-2 border-amber-300">
-                    <p class="text-[11px] font-extrabold text-emerald-800 mb-3 uppercase tracking-wider">
-                        <i class="fa-solid fa-qrcode mr-1 text-amber-500"></i> QR Code Identitas Anggota
-                    </p>
-                    <div class="bg-white p-3 rounded-xl inline-block shadow-inner border border-slate-200">
-                        <div id="qrcode-container" class="flex justify-center items-center"></div>
-                    </div>
-                    <p class="text-[10px] text-slate-500 font-medium mt-2">
-                        Scan QR Code ini untuk masuk otomatis. Jaga kerahasiaannya.
-                    </p>
-                </div>
-            </div>
-
-            <div class="bg-white p-5 sm:p-6 rounded-3xl shadow-sm border border-amber-100/60">
-                <h3 class="font-extrabold text-sm sm:text-base text-slate-800 mb-3">
-                    <i class="fa-solid fa-chart-pie text-emerald-800 mr-1"></i> Ringkasan Kas Kelompok
-                </h3>
-                <div class="grid grid-cols-3 gap-2">
-                    <div class="stat-card bg-emerald-50 border-emerald-100">
-                        <span class="stat-label text-emerald-700">Masuk</span>
-                        <span id="member-summary-income" class="stat-value text-emerald-800">Rp 0</span>
-                    </div>
-                    <div class="stat-card bg-rose-50 border-rose-100">
-                        <span class="stat-label text-rose-700">Keluar</span>
-                        <span id="member-summary-expense" class="stat-value text-rose-800">Rp 0</span>
-                    </div>
-                    <div class="stat-card bg-emerald-800 border-emerald-900 !text-white">
-                        <span class="stat-label text-amber-200">Saldo Kas</span>
-                        <span id="member-summary-balance" class="stat-value text-amber-300">Rp 0</span>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Area tersembunyi untuk membuat gambar E-Card -->
-    <div id="export-card-hidden-area" style="position:fixed; left:-9999px; top:-9999px;"></div>
-
-    <footer class="bg-white border-t border-amber-100 py-4 text-center text-xs text-slate-400 mt-auto">
-        &copy; 2026 Kelompok Tani Riau Mandiri Sejahtera (RMS). All rights reserved.
-    </footer>
-
+    <!-- Area Notifikasi -->
     <div id="toast-container" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] space-y-2"></div>
 
+    <!-- Panggil file app.js -->
     <script src="./app.js"></script>
 </body>
 </html>
