@@ -74,7 +74,7 @@
         <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center gap-3">
             <div class="flex items-center space-x-3 min-w-0">
                 <div class="w-11 h-11 bg-white rounded-full p-0.5 shadow ring-2 ring-amber-300/70 flex items-center justify-center shrink-0 overflow-hidden">
-                    <img src="./logo.jpeg" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
+                    <img src="./logo.jpg" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
                 </div>
                 <div class="min-w-0">
                     <p class="font-bold text-[10px] sm:text-xs tracking-wider text-amber-300 leading-tight">KELOMPOK TANI</p>
@@ -103,7 +103,7 @@
             <div class="bg-white p-6 sm:p-8 rounded-3xl shadow-soft border border-amber-100/70">
                 <div class="text-center mb-6">
                     <div class="w-28 h-28 bg-white rounded-full p-1 mx-auto mb-4 shadow-md ring-2 ring-rms-green/20 flex items-center justify-center overflow-hidden">
-                        <img src="./logo.jpeg" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
+                        <img src="./logo.jpg" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
                     </div>
                     <h2 class="font-extrabold text-lg text-rms-green">Selamat Datang</h2>
                     <p class="text-xs text-slate-500 font-medium mt-1">Sistem Administrasi & Keuangan Terpadu</p>
@@ -348,7 +348,7 @@
                 <div class="relative flex items-center justify-between border-b border-white/20 pb-3.5 mb-4">
                     <div class="flex items-center space-x-3">
                         <div class="w-11 h-11 bg-white rounded-full p-0.5 ring-1 ring-amber-300 flex items-center justify-center shrink-0 shadow overflow-hidden">
-                            <img src="./logo.jpeg" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
+                            <img src="./logo.jpg" alt="Logo RMS" class="w-full h-full object-cover rounded-full">
                         </div>
                         <div>
                             <p class="font-extrabold text-[10px] tracking-wider text-amber-300">KELOMPOK TANI</p>
@@ -903,8 +903,9 @@
             if (!container) return;
             container.innerHTML = '';
 
+            // DOMAIN GITHUB PAGES
             const noAnggota = currentUser.noAnggota || 'RMS-849201';
-            const targetUrl = "https://amazing-capybara-c4a807.netlify.app/?no_anggota=" + encodeURIComponent(noAnggota);
+            const targetUrl = "https://arniussimarmata.github.io/Riau-Bersatu-Mandiri/?no_anggota=" + encodeURIComponent(noAnggota);
 
             if (typeof QRCode !== 'undefined') {
                 new QRCode(container, {
